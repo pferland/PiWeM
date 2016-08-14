@@ -18,7 +18,7 @@ i = 0
 
 while 1:
     print("i = %d" % i)
-    mon.__loop_int = i
+    mon.loop_int = i
     if mon.write_text_to_image():  # If Sensor Data return is a Failure, do not increment, and try again.
         time.sleep(int(settings['sleep_time']))
         i = i + 1
