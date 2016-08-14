@@ -72,7 +72,6 @@ class PIMON:
     def take_picture(self):
         print("Take Picture.")
         image_name = self.tmp_dir + "Image_" + str(self.loop_int) + ".jpg"
-        self.camera.brightness = 25
         self.camera.capture(image_name)
         return image_name
 
