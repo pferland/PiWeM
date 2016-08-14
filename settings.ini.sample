@@ -15,7 +15,7 @@ sleep_time = 3600
 temp_humidity_pin = 23
 
 ;Brightness to set the Camera to
-brightness = 25
+brightness = 50
 
 ;Resolution to set the Camera to
 resolution = 3280,2464
