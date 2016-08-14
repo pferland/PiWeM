@@ -11,11 +11,11 @@ class PIWEM:
     take_picture_flag = 1
     verbose = 0
     pin = 0
-    brightness = 0
-    resolution = (0,0)
+    brightness = 50
+    resolution = (1920,1080)
     jpeg_quality = 100
     text_font = ""
-    text_color = (0,0,0)
+    text_color = (255,0,0)
     output_path = ""
     tmp_dir = ""
     db = None
@@ -49,14 +49,14 @@ class PIWEM:
 
 
     def fetch_data(self):
-        self.conn.execute("""SELECT id, humidity, f_temp, c_temp, time_stamp FROM data ORDER BY id DESC""")
-        return self.conn.fetchone()
+        self.conn.execute("SELECT id, humidity, f_temp, c_temp, time_stamp FROM data ORDER BY id DESC")
+        return self.conn.fetchall()
 
 
     def insert_data(self, data):
         ts = time.time()
         timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-        self.conn.executemany("""INSERT INTO weather_data.data (humidity, f_temp, c_temp, time_stamp ) VALUES ( %s, %s, %s, %s) """,
+        self.conn.executemany("INSERT INTO weather_data.data ( humidity, f_temp, c_temp, time_stamp ) VALUES ( %s, %s, %s, %s) ",
         [
         (data[0], data[2], data[1], timestamp ),
         ])
@@ -71,7 +71,7 @@ class PIWEM:
         return 0
 
 
-    def get_berometer_data(self):
+    def get_barometer_data(self):
 
         return 0
 
@@ -98,9 +98,9 @@ class PIWEM:
                 ts = time.time()
                 timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
-                print("TimeStamp: " + timestamp)
-                print("Humidity:       " + str(data[0]) + "%")
-                print("Temperature: " + str(data[1]) + "C / " + str(data[2]) + "F")
+                print("TimeStamp:   {0}".format(timestamp))
+                print("Humidity:    {0}%".format(data[0]) )
+                print("Temperature: {0}C / {1}F".format( data[1], data[2] ) )
 
             if self.take_picture_flag:
                 #draw.text((x, y),"Sample Text",(r,g,b))
@@ -108,7 +108,7 @@ class PIWEM:
                 draw.text((10, 60), "Temperature: " + str(data[1]) + "C / " + str(data[2]) + "F" ,self.text_color, font=font)
                 img.save(self.output_path + filename, quality=self.jpeg_quality)
                 os.remove(image)
-                print("Saved Image: " + self.output_path + filename)
+                print( "Saved Image: {0}".format(self.output_path + filename) )
             return 1
         else:
             print("Data return error.")
