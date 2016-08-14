@@ -1,0 +1,36 @@
+[settings]
+;SQL Server HostName/IP Address
+sql_host = localhost
+
+;SQL Server UserName
+sql_user = root
+
+;SQL User Password
+sql_password = toor
+
+;How long til the next run of the loop to get data
+sleep_time = 3600
+
+;GPIO Pin Number for the DHT11 Temerature & Humidity Sensor
+temp_humidity_pin = 23
+
+;Brightness to set the Camera to
+brightness = 25
+
+;Resolution to set the Camera to
+resolution = 3280,2464
+
+;Quality to save the image after writing the text to the image
+jpeg_quality = 100
+
+;Text to use on the images for the Data
+text_font = /opt/vc/src/hello_pi/hello_font/Vera.ttf
+
+;Color for the Data Text
+text_color = 255,0,0
+
+;Output path for the final images with data
+output_path = /mnt/e/Outputs/done/
+
+;Temp path for the camera to save the pre-data images.
+tmp_dir = /mnt/e/Outputs/tmp/
