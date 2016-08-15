@@ -99,12 +99,12 @@ class PIWEM:
                 timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
                 print("TimeStamp:   {0}".format(timestamp))
-                print("Humidity:    {0}%".format(data[0]) )
+                print("Humidity:    {0}% (maybe?) {1}%".format(data[0], data[0]*2) )
                 print("Temperature: {0}C / {1}F".format( data[1], data[2] ) )
 
             if self.take_picture_flag:
                 #draw.text((x, y),"Sample Text",(r,g,b))
-                draw.text((10, 0), "Humidity:       " + str(data[0]) + "%" ,self.text_color, font=font)
+                draw.text((10, 0), "Humidity:       " + str(data[0]) + "% " ,self.text_color, font=font)
                 draw.text((10, 60), "Temperature: " + str(data[1]) + "C / " + str(data[2]) + "F" ,self.text_color, font=font)
                 img.save(self.output_path + filename, quality=self.jpeg_quality)
                 os.remove(image)
