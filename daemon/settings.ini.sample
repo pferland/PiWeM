@@ -11,8 +11,17 @@ sql_password = toor
 ;How long til the next run of the loop to get data
 sleep_time = 3600
 
-;GPIO Pin Number for the DHT11 Temerature & Humidity Sensor
-temp_humidity_pin = 23
+;GPIO Pin Number for the DHT11 Temperature & Humidity Sensor
+dht_pin = 23
+
+#Photoresistor pin on the PCF8591
+photoresistor_pin = 0
+
+;GPIO Pin Number for the DHT11 Temperature & Humidity Sensor
+pcm_address = 0x48
+
+;GPIO Pin Number for the DHT11 Temperature & Humidity Sensor
+bmp_address = 0x77
 
 ;Brightness to set the Camera to
 brightness = 50
@@ -30,7 +39,7 @@ text_font = /opt/vc/src/hello_pi/hello_font/Vera.ttf
 text_color = 255,0,0
 
 ;Output path for the final images with data
-output_path = /mnt/e/Outputs/done/
+output_path = /home/pi/Outputs/done/
 
 ;Temp path for the camera to save the pre-data images.
-tmp_dir = /mnt/e/Outputs/tmp/
+tmp_dir = /tmp/

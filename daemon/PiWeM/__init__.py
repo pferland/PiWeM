@@ -1,1 +1,1 @@
-__all__ = ['pimon', "dht11"]
+__all__ = ['pimon', 'dht11', 'PCM8591']
