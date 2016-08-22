@@ -14,7 +14,7 @@ text_color = (int(text_color_split[0]), int(text_color_split[1]), int(text_color
 
 #create the main object and set a few extra settings aside from the defaults.
 try:
-    mon = PiWeM.PIWEM(sql_host=settings['sql_host'], sql_user=settings['sql_user'], sql_password=settings['sql_password'], dht_pin=int(settings['dht_pin']), pcm_address=settings['pcm_address'], bmp_address=settings['bmp_address'])
+    mon = PiWeM.PIWEM(sql_host=settings['sql_host'], sql_user=settings['sql_user'], sql_password=settings['sql_password'], dht_pin=int(settings['dht11_pin']), dht22_pin=int(settings['dht22_pin']), pcf_address=settings['pcf_address'], bmp_address=settings['bmp_address'])
 except IOError, e:
     print e.args
     print e.errno
@@ -27,7 +27,7 @@ mon.verbose = 1
 mon.take_picture_flag = 0
 
 #sensor to get the temp
-mon.bcm = 1   # Barometer sensor to be used for temp
+mon.bmp = 1   # Barometer sensor to be used for temp
 mon.dht11 = 0 # DHT11 sensor to be used for temp
 mon.dht22 = 0 # DHT22 sensor to be used for temp
 mon.photosresistor_channel = settings['photoresistor_pin'] # Photoresistor on the PCF8591 channel 0

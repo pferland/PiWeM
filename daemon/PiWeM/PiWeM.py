@@ -11,7 +11,6 @@ from dht11 import dht11
 
 
 class PIWEM:
-
     # Really just for the daemon to keep track of loop numbers during error loops, but its what number you want it to start counting at.
     loop_int = 0
 
@@ -27,9 +26,9 @@ class PIWEM:
     dht_pin = 0
 
     # Flags to tell what sensor should get the temperature value, can only have one set at a time, if more tha ons set, than the last one that is run will overwrite the other.
-    bcm = 0
-    dht11 = 0
-    dht22 = 0
+    bmp = 0
+    dht11_temp_flag = 0
+    dht22_temp_flag = 0
 
     #Init values for the DHT sensors. Supports both the DHT11 and DHT22. Others will be added when I find and can buy other devices.
     dht11_instance = None
@@ -51,21 +50,22 @@ class PIWEM:
     conn = None
 
     #PCF8591 Analog to Digital switcher init, address, and device settings, address up to 4 devices at once.
-    pcm = ADC
-    pcm_address = 0x48
+    pcf_instance = ADC
+    pcf_address = 0x48
     photosresistor_channel = 0
 
     #BPM085 Barometer pressure sensor init and address
-    bmp = ADC
+    bmp_instance = ADC
     bmp_address = 0x77
 
     #Init value for GPIO object
     GPIO_obj = None
 
 
-    def __init__(self, sql_host='127.0.0.1', sql_user='piwem', sql_password='', dht_pin='1', pcm_address='0x48', bmp_address='0x77'):
+    def __init__(self, sql_host='127.0.0.1', sql_user='piwem', sql_password='', dht11_pin=1, dht22_pin=2, pcf_address='0x48', bmp_address='0x77'):
         self.db = MySQLdb.connect(host=sql_host, user=sql_user, passwd=sql_password)
-        self.dht_pin = dht_pin
+        self.dht11_pin = dht11_pin
+        self.dht22_pin = dht22_pin
         self.bmp_address = bmp_address
         self.loop_int = 0
 
@@ -74,16 +74,16 @@ class PIWEM:
         self.GPIO_obj.setwarnings(False)
         self.GPIO_obj.setmode(GPIO.BCM)
         self.GPIO_obj.cleanup()
-        self.pcm.setup(pcm_address)
-        self.bcm.setup(bmp_address)
+        self.pcf_instance.setup(pcf_address)
+        self.bmp_instance.setup(bmp_address)
         self.conn = self.db.cursor()
 
         # read data using dht_pin 14
-        if self.dht11:
-            self.dht11_instance = dht11.DHT11(pin=self.dht_pin)
+        if self.dht11_temp_flag:
+            self.dht11_instance = dht11.DHT11(pin=self.dht11_pin)
 
-        if self.dht22:
-            self.dht11_instance = dht11.DHT11(pin=self.dht_pin)
+        #if self.dht22_temp_flag:
+        #    self.dht11_instance = dht22.DHT22(pin=self.dht22_pin)
 
         global sensor
         sensor = BMP085.BMP085()
@@ -120,17 +120,17 @@ class PIWEM:
 
 
     def get_temp_data(self):
-        if self.dht11:
+        if self.dht11_temp_flag:
             result = self.dht11_instance.read()
             if result.is_valid():
                 f_temp = ((int(result.temperature) * 9)/5)+32
                 return result.temperature, f_temp
-#        elif self.dht22:
+#        elif self.dht22_temp_flag:
 #            result = self.dht22_instance.read()
 #            if result.is_valid():
 #                f_temp = ((int(result.temperature) * 9)/5)+32
 #                return result.temperature, f_temp
-        elif self.bcm:
+        elif self.bmp:
             temp = sensor.read_temperature()        # Read temperature to variable temp
             if temp is not 0:
                 f_temp = ((int(temp) * 9)/5)+32
@@ -155,7 +155,7 @@ class PIWEM:
 
 
     def get_photolevel_data(self):
-        return self.ADC.read(self.photosresistor_channel)
+        return self.pcf.read(self.photosresistor_channel)
 
 
     def take_picture(self):

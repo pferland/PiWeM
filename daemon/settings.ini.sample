@@ -12,13 +12,16 @@ sql_password = toor
 sleep_time = 3600
 
 ;GPIO Pin Number for the DHT11 Temperature & Humidity Sensor
-dht_pin = 23
+dht11_pin = 23
+
+;GPIO Pin Number for the DHT22 Temperature & Humidity Sensor
+dht22_pin = 24
 
 #Photoresistor pin on the PCF8591
 photoresistor_pin = 0
 
 ;GPIO Pin Number for the DHT11 Temperature & Humidity Sensor
-pcm_address = 0x48
+pcf_address = 0x48
 
 ;GPIO Pin Number for the DHT11 Temperature & Humidity Sensor
 bmp_address = 0x77
