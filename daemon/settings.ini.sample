@@ -18,7 +18,7 @@ dht11_pin = 23
 dht22_pin = 24
 
 #Photoresistor pin on the PCF8591
-photoresistor_pin = 0
+photoresistor_channel = 0
 
 ;GPIO Pin Number for the DHT11 Temperature & Humidity Sensor
 pcf_address = 0x48

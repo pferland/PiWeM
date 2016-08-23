@@ -2,7 +2,7 @@ import RPi.GPIO as GPIO
 import PCF8591 as ADC
 
 import Adafruit_BMP.BMP085 as BMP085
-import picamera, os, MySQLdb, time, datetime
+import picamera, sys, os, MySQLdb, time, datetime
 
 from PIL import Image
 from PIL import ImageDraw
@@ -14,19 +14,20 @@ class PIWEM:
     # Really just for the daemon to keep track of loop numbers during error loops, but its what number you want it to start counting at.
     loop_int = 0
 
-    #Where you want the weather data to be logged to. so far just supports CSV and TSV
-    sql_log_data = 1
-    file_log = 0
-    file_log_type = 'csv' # supports csv or tsv (comma or tab)
+    #Where you want the weather data to be logged to. so far just supports CSV and TSV Well not really, but it will be
+    sql_log_data    = 1
+    file_log        = 0
+    file_log_type   = 'csv' # supports csv or tsv (comma or tab)
 
     # write values to the console
     verbose = 0
 
     #used to get much more data about what is happening, really only needed if you are fucking around with the code. Might get some nifty information ;-)
-    dht_pin = 0
+    dht11_pin = 0
+    dht22_pin = 0
 
     # Flags to tell what sensor should get the temperature value, can only have one set at a time, if more tha ons set, than the last one that is run will overwrite the other.
-    bmp = 0
+    bmp_temp_flag   = 0
     dht11_temp_flag = 0
     dht22_temp_flag = 0
 
@@ -35,65 +36,74 @@ class PIWEM:
     dht22_instance = None
 
     # RasPi camera settings, defaults should work for both v1 and v2 of the camera
-    take_picture_flag = 1
-    camera = None
-    brightness = 50
-    resolution = (1920,1080)
-    jpeg_quality = 100
-    text_font = ""
-    text_color = (255,0,0)
-    output_path = ""
-    tmp_dir = ""
+    take_picture_flag   = 1
+    camera              = None
+    brightness          = 50
+    resolution          = (1920,1080)
+    jpeg_quality        = 100
+    text_font           = ""
+    text_color          = (255,0,0)
+    output_path         = ""
+    tmp_dir             = ""
 
     #Init values for the SQL connection only need the DB and conn, others are not needed to be static, can just grab them again from the settings var.
     db = None
     conn = None
 
     #PCF8591 Analog to Digital switcher init, address, and device settings, address up to 4 devices at once.
-    pcf_instance = ADC
-    pcf_address = 0x48
-    photosresistor_channel = 0
+    pcf_instance            = ADC
+    pcf_address             = 0x48
+    photosresistor_channel  = 0
 
     #BPM085 Barometer pressure sensor init and address
-    bmp_instance = ADC
-    bmp_address = 0x77
+    bmp_instance    = BMP085
+    bmp_address     = 0x77
 
     #Init value for GPIO object
     GPIO_obj = None
 
 
-    def __init__(self, sql_host='127.0.0.1', sql_user='piwem', sql_password='', dht11_pin=1, dht22_pin=2, pcf_address='0x48', bmp_address='0x77'):
+    def __init__(self, sql_host='127.0.0.1', sql_user='piwem', sql_password='', dht='11', bmp='085'):
         self.db = MySQLdb.connect(host=sql_host, user=sql_user, passwd=sql_password)
-        self.dht11_pin = dht11_pin
-        self.dht22_pin = dht22_pin
-        self.bmp_address = bmp_address
-        self.loop_int = 0
-
+        self.loop_int   = 0
+        self.dht        = dht  # 11 and 22 are supported
+        self.bmp        = bmp  # 085 (supported now); 180 and 280 will be supported when they come in.
         # initialize GPIO
         self.GPIO_obj = GPIO
         self.GPIO_obj.setwarnings(False)
         self.GPIO_obj.setmode(GPIO.BCM)
         self.GPIO_obj.cleanup()
-        self.pcf_instance.setup(pcf_address)
-        self.bmp_instance.setup(bmp_address)
+
         self.conn = self.db.cursor()
 
-        # read data using dht_pin 14
-        if self.dht11_temp_flag:
-            self.dht11_instance = dht11.DHT11(pin=self.dht11_pin)
 
-        #if self.dht22_temp_flag:
-        #    self.dht11_instance = dht22.DHT22(pin=self.dht22_pin)
-
+    def setup_bmp(self, address = '0x77'):
+        hex_int = int(address, 16)
+        self.bmp_address = hex_int
         global sensor
         sensor = BMP085.BMP085()
 
 
-    def enable_camera(self):
-        self.camera = picamera.PiCamera()
-        self.camera.brightness = self.brightness
-        self.camera.resolution = self.resolution
+    def setup_pcf(self, address = '0x48'):
+        hex_int = int(address, 16)
+        self.pcf_address = hex_int
+        self.pcf_instance.setup(self.pcf_address)
 
+
+    def setup_dht11(self, dht11_pin):
+        self.dht11_pin      = dht11_pin
+        self.dht11_instance = dht11.DHT11(pin=self.dht11_pin)
+
+
+    def setup_dht22(self, dht22_pin):
+        self.dht22_pin = dht22_pin
+        #self.dht22_instance = dht22.DHT22(pin=self.dht22_pin)   # will add after the dht22 order comes in :/ ...
+
+
+    def enable_camera(self):
+        self.camera             = picamera.PiCamera()
+        self.camera.brightness  = self.brightness
+        self.camera.resolution  = self.resolution
 
 
     def fetch_data(self):
@@ -105,9 +115,9 @@ class PIWEM:
         ts = time.time()
         timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
         print data
-        self.conn.executemany("INSERT INTO weather_data.data ( humidity, f_temp, c_temp, time_stamp ) VALUES ( %s, %s, %s, %s) ",
+        self.conn.executemany("INSERT INTO weather_data.data ( humidity, f_temp, c_temp, pressure, photolevel, time_stamp ) VALUES ( %s, %s, %s, %s, %s, %s) ",
         [
-        (data[2], data[0][1], data[0][0], timestamp ),
+        (data[2], data[0][1], data[0][0], data[1], data[3], timestamp),
         ])
         self.db.commit()
 
@@ -130,7 +140,7 @@ class PIWEM:
 #            if result.is_valid():
 #                f_temp = ((int(result.temperature) * 9)/5)+32
 #                return result.temperature, f_temp
-        elif self.bmp:
+        elif self.bmp_temp_flag:
             temp = sensor.read_temperature()        # Read temperature to variable temp
             if temp is not 0:
                 f_temp = ((int(temp) * 9)/5)+32
@@ -155,7 +165,8 @@ class PIWEM:
 
 
     def get_photolevel_data(self):
-        return self.pcf.read(self.photosresistor_channel)
+        print "PhotoLevel: " + str(self.pcf_instance.read(0))
+        return self.pcf_instance.read(self.photosresistor_channel)
 
 
     def take_picture(self):
@@ -189,7 +200,7 @@ class PIWEM:
                 print 'Pressure = {0:0.4f} Pa'.format(data[1])   # Print pressure in pascal
                 print 'Pressure = {0:0.4f} mmhg'.format(data[1] / float(133.322368) )   # Print pressure in mm of Mercury
                 print 'Pressure = {0:0.4f} atm'.format(data[1] / float(101325) )    # Print pressure in Atmospheres
-                print 'Photolevel = {0:0.4f} '.format(data[2])    # Print photoresistor levels
+                print 'Photolevel = {0} '.format(data[3])    # Print photoresistor levels
                 print ''
             if self.take_picture_flag:
                 #draw.text((x, y),"Sample Text",(r,g,b))
