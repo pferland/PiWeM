@@ -66,6 +66,22 @@ CREATE TABLE weather_data.Stations
 );
 
 
+CREATE TABLE weather_data.Station_sensors
+(
+  id int PRIMARY KEY NOT NULL AUTO_INCREMENT,
+  station_hash VARCHAR(64) NOT NULL,
+  dht11 TINYINT(1) NOT NULL,
+  dht22 TINYINT(1) NOT NULL,
+  bmp085 TINYINT(1) NOT NULL,
+  bmp180 TINYINT(1) NOT NULL,
+  bmp280 TINYINT(1) NOT NULL,
+  thermistor TINYINT(1) NOT NULL,
+  analog_temp_sensor TINYINT(1) NOT NULL,
+  photoresistor TINYINT(1) NOT NULL,
+  timestamp int NOT NULL
+);
+
+
 CREATE TABLE weather_data.photoresistor
 (
   id int PRIMARY KEY NOT NULL AUTO_INCREMENT,
