@@ -1,4 +1,7 @@
 [settings]
+verbose = 1
+debug = 0
+
 ;SQL Server HostName/IP Address
 sql_host = localhost
 
@@ -11,6 +14,18 @@ sql_password = toor
 ;How long til the next run of the loop to get data
 sleep_time = 3600
 
+;Enable or disables devices completely (well minus power, just to PiWeM
+pcf8591_enabled = 0
+bmp085_enabled = 0
+bmp180_enabled = 0
+bmp280_enabled = 0
+dht11_enabled = 1
+dht22_enabled = 0
+thermistor_enabled = 0
+analog_temp_sensor_enabled = 0
+photoresistor_enabled = 0
+camera_enabled = 0
+
 ;GPIO Pin Number for the DHT11 Temperature & Humidity Sensor
 dht11_pin = 23
 
@@ -20,11 +35,30 @@ dht22_pin = 24
 #Photoresistor pin on the PCF8591
 photoresistor_channel = 0
 
-;GPIO Pin Number for the DHT11 Temperature & Humidity Sensor
+; Device to use to get the temperature
+; ats (analog temp sensor), ds18b20, therm, bmp085, bmp180, bmp280
+temp_flag = "bmp085"
+
+;I2C address in hex for the PCF8591
 pcf_address = 0x48
 
-;GPIO Pin Number for the DHT11 Temperature & Humidity Sensor
-bmp_address = 0x77
+;I2C address in hex for the BMP085
+bmp085_address = 0x77
+
+;I2C address in hex for the BMP180
+bmp180_address = 0x77
+
+;I2C address in hex for the BMP280
+bmp280_address = 0x77
+
+; Thermistor channel on the PCF8591
+thermistor_channel = 2
+
+;Digital Termperature Sensor DS18b20 GPIO pin
+ds18b20_pin = 22
+
+;Analog Temperature Sensor channel on the PCF8591
+ats_channel = 1
 
 ;Brightness to set the Camera to
 brightness = 50
