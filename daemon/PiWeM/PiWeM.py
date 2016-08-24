@@ -164,13 +164,71 @@ class PIWEM:
         ts = time.time()
         timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
         print data
-        self.conn.executemany("INSERT INTO weather_data.data ( humidity, f_temp, c_temp, pressure, photolevel, time_stamp ) VALUES ( %s, %s, %s, %s, %s, %s) ",
-        [
-        (data[2], data[0][1], data[0][0], data[1], data[3], timestamp),
-        ])
-        self.db.commit()
 
-    #def insert_
+
+        if self.bmp085_enabled:
+            self.conn.executemany("INSERT INTO weather_data.bmp085 ( pressure, station_hash, `timestamp` ) VALUES ( %s, %s, %s) ",
+            [
+            (data[3], self.station_hash, timestamp),
+            ])
+            self.db.commit()
+
+
+        if self.bmp180_enabled:
+            self.conn.executemany("INSERT INTO weather_data.bmp180 ( pressure, station_hash, `timestamp` ) VALUES ( %s, %s, %s) ",
+            [
+            (data[3], self.station_hash, timestamp),
+            ])
+            self.db.commit()
+
+
+        if self.bmp280_enabled:
+            self.conn.executemany("INSERT INTO weather_data.bmp280 ( pressure, station_hash, `timestamp` ) VALUES ( %s, %s, %s) ",
+            [
+            (data[3], self.station_hash, timestamp),
+            ])
+            self.db.commit()
+
+
+        if self.dht11_enabled:
+            self.conn.executemany("INSERT INTO weather_data.dht11 ( f_temp, c_temp, humidity, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s) ",
+            [
+            (data[0][1], data[0][0], data[1], self.station_hash, timestamp),
+            ])
+            self.db.commit()
+
+
+        if self.dht22_enabled:
+            self.conn.executemany("INSERT INTO weather_data.dht22 ( f_temp, c_temp, humidity, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
+            [
+            (data[0][1], data[0][0], data[1], self.station_hash, timestamp),
+            ])
+            self.db.commit()
+
+
+        if self.thermistor_enabled:
+            self.conn.executemany("INSERT INTO weather_data.data ( humidity, f_temp, c_temp, pressure, photolevel, `timestamp` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
+            [
+            (data[2], data[0][1], data[0][0], data[1], data[3], timestamp),
+            ])
+            self.db.commit()
+
+
+        if self.analog_temp_sensor_enabled:
+            self.conn.executemany("INSERT INTO weather_data.data ( humidity, f_temp, c_temp, pressure, photolevel, time_stamp ) VALUES ( %s, %s, %s, %s, %s, %s) ",
+            [
+            (data[2], data[0][1], data[0][0], data[1], data[3], timestamp),
+            ])
+            self.db.commit()
+
+
+        if self.photoresistor_enabled:
+            self.conn.executemany("INSERT INTO weather_data.data ( humidity, f_temp, c_temp, pressure, photolevel, time_stamp ) VALUES ( %s, %s, %s, %s, %s, %s) ",
+            [
+            (data[2], data[0][1], data[0][0], data[1], data[3], timestamp),
+            ])
+            self.db.commit()
+        return 0
 
 
     def get_humidity_data(self):

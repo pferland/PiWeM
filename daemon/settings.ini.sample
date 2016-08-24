@@ -14,7 +14,7 @@ sql_password = toor
 ;How long til the next run of the loop to get data
 sleep_time = 3600
 
-;Enable or disables devices completely (well minus power, just to PiWeM
+;Enable or disables devices completely (well minus power, just to PiWeM)
 pcf8591_enabled = 0
 bmp085_enabled = 0
 bmp180_enabled = 0
