@@ -40,7 +40,7 @@ photoresistor_channel = 0
 temp_flag = "bmp085"
 
 ;I2C address in hex for the PCF8591
-pcf_address = 0x48
+pcf8591_address = 0x48
 
 ;I2C address in hex for the BMP085
 bmp085_address = 0x77
