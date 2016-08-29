@@ -18,4 +18,4 @@ class SensorValues(object):
     analog_temp_sensor  = 0
     photoresistor       = 0
 
-    fetch_error         = 0
+    fetch_error         = []

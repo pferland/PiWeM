@@ -36,7 +36,6 @@ except ValueError, e:
     print e.message
     sys.exit(1)
 
-mon.photoresistor_enabled = int(settings['thermistor_enabled'])
 mon.photosresistor_channel = int( settings['photoresistor_channel'] )# Photoresistor on the PCF8591 channel 0
 mon.ats_channel = int(settings['ats_channel'])
 mon.thermistor_channel = int(settings['thermistor_channel'])
@@ -79,3 +78,10 @@ while 1: #lets start the main loop!!!!!!!!
             mon.camera.close()
         print "Keyboard Interrupt detected, daemon/script closing."
         sys.exit(0)
+    except ValueError, e:
+        print e.args
+        print e.errno
+        print e.strerror
+        print e.filename
+        print e.message
+        sys.exit(1)

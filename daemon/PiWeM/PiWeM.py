@@ -149,8 +149,9 @@ class PIWEM:
         timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
         if self.debug:
+            print "Values to write to sensor tables:"
             print (self.station_hash, bool(self.dht11_enabled), bool(self.dht22_enabled), bool(self.bmp085_enabled), bool(self.bmp180_enabled), bool(self.bmp280_enabled), bool(self.thermistor_enabled), bool(self.analog_temp_sensor_enabled), bool(self.photoresistor_enabled), bool(self.camera_enabled), timestamp)
-
+            print ""
         self.conn.executemany("INSERT INTO `weather_data`.`Station_sensors` (`station_hash`, `dht11`, `dht22`, `bmp085`, `bmp180`, `bmp280`, `thermistor`, `analog_temp_sensor`, `photoresistor`, `camera`, `timestamp`)  "
                               "VALUES ( %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ",
         [
@@ -271,7 +272,9 @@ class PIWEM:
             print self.sensor_values.photoresistor
 
             print "Fetch Error Result Flag"
-            print self.sensor_values.fetch_error
+            if self.sensor_values.fetch_error:
+                print self.sensor_values.fetch_error[0]
+                print self.sensor_values.fetch_error[1]
             print "-------------------------------------------------------------------"
 
         if self.bmp085_enabled:
@@ -356,71 +359,86 @@ class PIWEM:
 
 
     def get_dht11_data(self):
-        result = self.dht11_instance.read()
-        f_temp = ((int(result.temperature) * 9)/5)+32
+        if self.dht11_enabled:
+            result = self.dht11_instance.read()
+            f_temp = ((int(result.temperature) * 9)/5)+32
 
-        if result.humidity is 0:
-            print "Error fetching DHT Humidity"
-            humidity_results = 0
-        else:
-            humidity_results = result.humidity
-        if result.temperature is 0:
-            temp_results = (0, 0)
-        else:
-            temp_results = (result.temperature, f_temp)
-        return temp_results, humidity_results*2
+            if result.humidity is 0:
+                print "Error fetching DHT Humidity"
+                humidity_results = 0
+            else:
+                humidity_results = result.humidity
+            if result.temperature is 0:
+                temp_results = (0, 0)
+            else:
+                temp_results = (result.temperature, f_temp)
+            return temp_results, humidity_results*2
+        return 0
 
 
     def get_bmp085_data(self):
-        pressure = self.bmp085_instance.read_pressure()       # Read pressure to variable pressure
-        if pressure is 0:
-            raise IOError("Fetching Data Error BMP085 Pressure...")
+        if self.bmp085_enabled:
+            pressure = self.bmp085_instance.read_pressure()       # Read pressure to variable pressure
+            if pressure is 0:
+                self.sensor_values.fetch_error = [1, "BMP085 pressure fetch error"]
+                raise IOError("Fetching Data Error BMP085 Pressure...")
 
-        temp = self.bmp085_instance.read_temperature()        # Read temperature to variable temp
-        if temp is 0:
-            raise IOError("Fetching Data Error BMP085 Temperature...")
+            temp = self.bmp085_instance.read_temperature()        # Read temperature to variable temp
+            if temp is 0:
+                self.sensor_values.fetch_error = [1, "bmp085 temperature fetch error"]
+                raise IOError("Fetching Data Error BMP085 Temperature...")
 
-        f_temp = ((int(temp) * 9)/5)+32
-        return (temp, f_temp), pressure
-
-
-
-    def get_thermistor_temp_data(self):
-        if self.debug:
-            print "Thermistor Channel: "+ str(self.thermistor_channel)
-        analogVal = self.pcf8591_instance.read(self.thermistor_channel)
-        if self.debug:
-            print analogVal
-        if analogVal is 255:
-            return 0, 0
-        Vr = 5 * float(analogVal) / 255
-        Rt = 10000 * Vr / (5 - Vr)
-        temp = 1/(((math.log(Rt / 10000)) / 3950) + (1 / (273.15+25)))
-        temp = temp - 273.15
-        f_temp = ((int(temp) * 9)/5)+32
-        if self.debug:
-            print temp, f_temp
-        #sys.exit(1)
-        return temp, f_temp
+            f_temp = ((int(temp) * 9)/5)+32
+            return (temp, f_temp), pressure
+        return 0
 
 
-    def get_ats_temp_data(self):
-        if self.debug:
-            print "ATS Channel: "+ str(self.ats_channel)
-        analogVal = self.pcf8591_instance.read(self.ats_channel)
-        Vr = 5 * float(analogVal) / 255
-        Rt = 10000 * Vr / (5 - Vr)
-        temp = 1/(((math.log(Rt / 10000)) / 3950) + (1 / (273.15+25)))
-        temp = temp - 273.15
-        f_temp = ((int(temp) * 9)/5)+32
-        tmp = self.ATS_GPIO.input(27)
-        if self.debug:
-            print tmp, temp, f_temp
-        #sys.exit(1)
-        return temp, f_temp
+    def get_thermistor_temp_data(self):   # Get Data from the Thermistor
+        if self.thermistor_enabled:
+            if self.debug:
+                print "Thermistor Channel: "+ str(self.thermistor_channel)
+            analogVal = self.pcf8591_instance.read(self.thermistor_channel)
+            if self.debug:
+                print "Analog Value for Thermistor: " + str(analogVal)
+            if analogVal is 255:
+                self.sensor_values.fetch_error = [1, "Thermistor result value error"]
+                return 0, 0
+            Vr = 5 * float(analogVal) / 255
+            Rt = 10000 * Vr / (5 - Vr)
+            temp = 1/(((math.log(Rt / 10000)) / 3950) + (1 / (273.15+25)))
+            temp = temp - 273.15
+            f_temp = ((int(temp) * 9)/5)+32
+            if self.debug:
+                print "Celsius: " + str(temp) + " ||  Fahrenheit" + str(f_temp)
+            #sys.exit(1)
+            return temp, f_temp
+        return 0
 
 
-    def get_sensor_data(self):
+    def get_ats_temp_data(self):  # Get data from the Analog Temperature Sensor
+        if self.analog_temp_sensor_enabled:
+            if self.debug:
+                print "ATS Channel: "+ str(self.ats_channel)
+            analogVal = self.pcf8591_instance.read(self.ats_channel)
+            if self.debug:
+                print "Analog Value for ATS: " + str(analogVal)
+            if analogVal is 255:
+                self.sensor_values.fetch_error = [1, "Analog Temperature Sensor value return error"]
+                return 0, 0
+            Vr = 5 * float(analogVal) / 255
+            Rt = 10000 * Vr / (5 - Vr)
+            temp = 1/(((math.log(Rt / 10000)) / 3950) + (1 / (273.15+25)))
+            temp = temp - 273.15
+            f_temp = ((int(temp) * 9)/5)+32
+            tmp = self.ATS_GPIO.input(27)
+            if self.debug:
+                print "GPIO C temp: " + str(tmp) + "   Analog C Temp: " + str(temp) + "    Analog F Temp" + str(f_temp)
+            #sys.exit(1)
+            return temp, f_temp
+        return 0
+
+
+    def get_sensor_data(self):  # Gather all of the sensors data
 
         bmp085_data = self.get_bmp085_data()
         self.sensor_values.bmp085_temp = bmp085_data[0]
@@ -452,13 +470,16 @@ class PIWEM:
         return 0
 
 
-    def get_photolevel_data(self):
-        if self.debug:
-            print "PhotoLevel: " + str(self.pcf8591_instance.read(self.photosresistor_channel))
-        return self.pcf8591_instance.read(self.photosresistor_channel)
+    def get_photolevel_data(self):  # Get levels from the Photoresistor
+        print "photoresistor_enabled Value: " + str(self.photoresistor_enabled)
+        if self.photoresistor_enabled:
+            if self.debug:
+                print "PhotoLevel: " + str(self.pcf8591_instance.read(self.photosresistor_channel))
+            return self.pcf8591_instance.read(self.photosresistor_channel)
+        return 0
 
 
-    def take_picture(self):
+    def take_picture(self):   # well i think this is self-explanatory...
         if self.debug:
             print("Take Picture.")
         image_name = self.tmp_dir + "Image_" + str(self.loop_int) + ".jpg"
@@ -466,7 +487,7 @@ class PIWEM:
         return image_name
 
 
-    def get_data_trigger(self):
+    def get_data_trigger(self):  #Main loop trigger and handler for the daemon
         if self.camera_enabled:
             image = self.take_picture()
             img = Image.open( image)
@@ -476,31 +497,34 @@ class PIWEM:
             font = ImageFont.truetype(self.text_font, 40)
         self.get_sensor_data()
 
-        if not self.sensor_values.fetch_error:
-            self.insert_data()
-            if self.verbose:
-                ts = time.time()
-                timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-                print "|-------------------------------------------|"
-                print 'TimeStamp:   {0}'.format(timestamp)
-                print 'Humidity:    {0}%'.format(self.sensor_values.dht11_humidity)
-                print 'Temperature = {0:0.2f} C'.format(self.sensor_values.dht11_temp[0])             # Print temperature in C
-                print 'Temperature = {0:0.2f} F'.format(self.sensor_values.dht11_temp[1])             # Print temperature in F
-                print 'Pressure = {0:0.4f} Pa'.format(self.sensor_values.bmp085_pressure)   # Print pressure in pascal
-                print 'Pressure = {0:0.4f} mmhg'.format(self.sensor_values.bmp085_pressure / float(133.322368) )   # Print pressure in mm of Mercury
-                print 'Pressure = {0:0.4f} atm'.format(self.sensor_values.bmp085_pressure / float(101325) )    # Print pressure in Atmospheres
-                print 'Photolevel = {0} '.format(self.sensor_values.photoresistor)    # Print photoresistor levels Higher number is lower light levels
-                print ''
-            if self.camera_enabled:
-                #draw.text((x, y),"Sample Text",(r,g,b))
-                draw.text((10, 0), "Humidity:       " + str(self.sensor_values.dht11_humidity) + "% " ,self.text_color, font=font)
-                draw.text((10, 60), "Temperature: " + str(self.sensor_values.bmp085_temp[0]) + "C / " + str(self.sensor_values.bmp085_temp[1]) + "F" ,self.text_color, font=font)
-                img.save(self.output_path + filename, quality=self.jpeg_quality)
-                os.remove(image)
-                print( "Saved Image: {0}".format(self.output_path + filename) )
-            return 1
-        else:
-            self.sensor_values.fetch_error = 0
-            print("Data return error.")
-            return 0
+#        if not self.sensor_values.fetch_error:
+        self.insert_data()
+
+        self.sensor_values.fetch_error = 0
+
+        if self.verbose:
+            ts = time.time()
+            timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+            print "|-------------------------------------------|"
+            print 'TimeStamp:   {0}'.format(timestamp)
+            print 'Humidity:    {0}%'.format(self.sensor_values.dht11_humidity)
+            print 'Temperature = {0:0.2f} C'.format(self.sensor_values.dht11_temp[0])             # Print temperature in C
+            print 'Temperature = {0:0.2f} F'.format(self.sensor_values.dht11_temp[1])             # Print temperature in F
+            print 'Pressure = {0:0.4f} Pa'.format(self.sensor_values.bmp085_pressure)   # Print pressure in pascal
+            print 'Pressure = {0:0.4f} mmhg'.format(self.sensor_values.bmp085_pressure / float(133.322368) )   # Print pressure in mm of Mercury
+            print 'Pressure = {0:0.4f} atm'.format(self.sensor_values.bmp085_pressure / float(101325) )    # Print pressure in Atmospheres
+            print 'Photolevel = {0} '.format(self.sensor_values.photoresistor)    # Print photoresistor levels Higher number is lower light levels
+            print ''
+        if self.camera_enabled:
+            #draw.text((x, y),"Sample Text",(r,g,b))
+            draw.text((10, 0), "Humidity:       " + str(self.sensor_values.dht11_humidity) + "% " ,self.text_color, font=font)
+            draw.text((10, 60), "Temperature: " + str(self.sensor_values.bmp085_temp[0]) + "C / " + str(self.sensor_values.bmp085_temp[1]) + "F" ,self.text_color, font=font)
+            img.save(self.output_path + filename, quality=self.jpeg_quality)
+            os.remove(image)
+            print( "Saved Image: {0}".format(self.output_path + filename) )
+        return 1
+ #       else:
+ #           self.sensor_values.fetch_error = 0
+ #           print("Data return error.")
+ #           return 0
 
