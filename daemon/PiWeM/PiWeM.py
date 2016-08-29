@@ -119,6 +119,7 @@ class PIWEM:
         if self.debug:
             print "Station Hash: " + self.station_hash
         self.loop_int   = 0
+        self.sleep_time = float(settings['sleep_time'])
         # initialize GPIO
 
         GPIO.setwarnings(False)
@@ -370,6 +371,7 @@ class PIWEM:
                 humidity_results = result.humidity
             if result.temperature is 0:
                 temp_results = (0, 0)
+                self.sensor_values.fetch_error = [1, "DHT11 fetch error"]
             else:
                 temp_results = (result.temperature, f_temp)
             return temp_results, humidity_results*2
