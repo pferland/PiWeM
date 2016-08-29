@@ -14,11 +14,11 @@ text_color = (int(text_color_split[0]), int(text_color_split[1]), int(text_color
 
 #create the main object and set a few extra settings aside from the defaults.
 try:
-    mon = PiWeM.PIWEM(  )
+    mon = PiWeM.PIWEM( settings=settings )
     mon.setup_dht11( dht11_pin=int(settings['dht11_pin']) )
-    mon.setup_dht22( dht22_pin=int(settings['dht22_pin']) )
+    #mon.setup_dht22( dht22_pin=int(settings['dht22_pin']) )
 
-    mon.setup_bmp085(address=settings['bmp_address']) # Don't think the BMP085 has a different address, but you can set it with the address variable
+    mon.setup_bmp085(address=settings['bmp085_address']) # Don't think the BMP085 has a different address, but you can set it with the address variable
     mon.setup_pcf8591(address=settings['pcf8591_address']) # Default address for the PCF8591 is 0x48, so its hardcoded, but you can set it to what ever you want with the address variable
 
 except IOError, e:
@@ -58,7 +58,8 @@ if mon.camera_enabled: # if you have a camera and want to use it for taking pict
     mon.enable_camera(brightness=int(mon.resolution), resolution=mon.resolution) #set the resolution and brightness while enabling it i guess you could do it afterwards, bit its not set to do that yet...
 
 while 1: #lets start the main loop!!!!!!!!
-    print("i = %d" % mon.loop_int) #What loop number are we at?
+    if mon.debug:
+        print("i = %d" % mon.loop_int) #What loop number are we at?
 
     try:
         get_data = mon.get_data_trigger()
