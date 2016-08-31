@@ -1,6 +1,10 @@
 #PyCharm Directories
 .idea/
+
+#Personal Settings to not sync
 settings.ini
+config.php
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -19,7 +23,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
