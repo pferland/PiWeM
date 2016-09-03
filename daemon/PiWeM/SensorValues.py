@@ -1,12 +1,15 @@
 class SensorValues(object):
     bmp085_temp         = []
     bmp085_pressure     = 0
+    bmp085_altitude     = 0
 
     bmp180_temp         = []
     bmp180_pressure     = 0
+    bmp180_altitude     = 0
 
     bmp280_temp         = []
     bmp280_pressure     = 0
+    bmp280_altitude     = 0
 
     dht11_temp          = []
     dht11_humidity      = 0

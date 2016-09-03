@@ -1,6 +1,9 @@
 import RPi.GPIO as GPIO
 import PCF8591 as ADC
 import Adafruit_BMP.BMP085 as BMP085
+#import Adafruit_DHT.AM2302 as AM2302
+import bmp280
+
 #import Adafruit_BMP.BMP180 as BMP180 #Temp filler, till i get the hardware and can actually use it.
 #import Adafruit_BMP.BMP280 as BMP280 #Temp filler, till i get the hardware and can actually use it.
 import picamera, socket, sys, uuid, os, math, MySQLdb, time, datetime, SensorValues
@@ -9,6 +12,10 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 from dht11 import dht11
+
+from pprint import pprint
+
+
 global sensor
 
 class PIWEM:
@@ -30,7 +37,8 @@ class PIWEM:
     debug       = 0
 
     #Enable or disables devices.
-    pcf8591_enabled                 = 0
+    pcf8591_enabled             = 0
+    am2302_enabled              = 0
     bmp085_enabled              = 0
     bmp180_enabled              = 0
     bmp280_enabled              = 0
@@ -46,9 +54,6 @@ class PIWEM:
     dht22_pin   = 0
     ds18b20_pin = 0
 
-    # Flags to tell what sensor should get the temperature value, can only have one set at a time, if more tha ons set, than the last one that is run will overwrite the other.
-    # ats (analog temp sensor), ds18b20, therm, bmp085, bmp180, bmp280
-    temp_flag   = "dht11"
 
     #Init values for the DHT sensors. Supports both the DHT11 and DHT22. Others will be added when I find and can buy other devices.
     dht11_instance = None
@@ -77,15 +82,15 @@ class PIWEM:
 
     #BPM085 Barometer pressure sensor init and address
     bmp085_instance    = None
-    bmp085_address     = -1
+    bmp085_address     = 0x77
 
     #BPM180 Barometer pressure sensor init and address
     bmp180_instance    = None
-    bmp180_address     = -1
+    bmp180_address     = 0x77
 
     #BPM280 Barometer pressure sensor init and address
     bmp280_instance    = None
-    bmp280_address     = -1
+    bmp280_address     = 0x76
 
     #
     sensor_values = None
@@ -120,8 +125,25 @@ class PIWEM:
             print "Station Hash: " + self.station_hash
         self.loop_int   = 0
         self.sleep_time = float(settings['sleep_time'])
-        # initialize GPIO
 
+        self.am2302_pin = settings['am2302_pin']
+        self.dht11_pin   = settings['dht11_pin']
+        self.dht22_pin   = settings['dht22_pin']
+        self.ds18b20_pin = settings['ds18b20_pin']
+        self.bmp085_address = int(settings['bmp085_address'], 16)
+        self.bmp180_address = int(settings['bmp180_address'], 16)
+        self.bmp280_address = int(settings['bmp280_address'], 16)
+        self.pcf8591_address = int(settings['pcf8591_address'], 16)
+        self.thermistor_channel = settings['thermistor_channel']
+        self.ats_channel = settings['ats_channel']
+        self.brightness = settings['brightness']
+        self.resolution = settings['resolution']
+        self.jpeg_quality = settings['jpeg_quality']
+        self.photosresistor_channel = int( settings['photoresistor_channel'] )# Photoresistor on the PCF8591 channel 0
+        self.ats_channel = int(settings['ats_channel'])
+        self.thermistor_channel = int(settings['thermistor_channel'])
+
+        # initialize GPIO
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)
         GPIO.cleanup()
@@ -129,6 +151,7 @@ class PIWEM:
         self.ATS_GPIO.setup(27, GPIO.IN)
 
         self.sensor_values = SensorValues.SensorValues()
+        self.setup_sensors()
 
 
     def set_sensor_flags(self, settings=[]):
@@ -138,11 +161,23 @@ class PIWEM:
         self.bmp280_enabled = int(settings['bmp280_enabled'])
         self.dht11_enabled = int(settings['dht11_enabled'])
         self.dht22_enabled = int(settings['dht22_enabled'])
+        self.am2302_enabled = int(settings['am2302_enabled'])
         self.pcf8591_enabled = int(settings['pcf8591_enabled'])
         self.thermistor_enabled = int(settings['thermistor_enabled'])
         self.analog_temp_sensor_enabled = int(settings['analog_temp_sensor_enabled'])
         self.photoresistor_enabled = int(settings['photoresistor_enabled'])
         return 0
+
+
+    def setup_sensors(self):
+        self.setup_dht11( dht11_pin=int(self.dht11_pin) )
+        self.setup_dht22( dht22_pin=int(self.dht22_pin) )
+        self.setup_bmp085(address=self.bmp085_address) # Low (ground) on sda for the BMP is 0x76, High is 0x77
+        #self.setup_bmp180(address=self.bmp180_address # Temp til I get a 180 to test with.)
+        self.setup_bmp280(address=self.bmp280_address)
+        self.setup_pcf8591(address=self.pcf8591_address) # Default address for the PCF8591 is 0x48, so its hardcoded, but you can set it to what ever you want with the address variable
+        self.setup_am2302(self.am2302_pin)
+        self.setup_camera()
 
 
     def insert_station_sensors(self):
@@ -183,49 +218,53 @@ class PIWEM:
         return 0
 
 
-    def setup_bmp085(self, address = '0x77'):
-        hex_int = int(address, 16)
-        self.bmp085_enabled = 1
-        self.bmp085_address = hex_int
-        self.bmp085_instance = BMP085.BMP085()
-        return 0
-
-    def setup_bmp180(self, address = '0x77'):
-        hex_int = int(address, 16)
-        self.bmp180_enabled = 1
-        self.bmp180_address = hex_int
-#        self.bmp085_instance = BMP180.BMP180() #Temp filler, till i get the hardware and can actually use it.
-        return 0
+    def setup_bmp085(self, address = 0x77):
+        if self.bmp085_enabled:
+            self.bmp085_address = address
+            self.bmp085_instance = BMP085.BMP085(address=self.bmp085_address)
+            return 0
 
 
-    def setup_bmp280(self, address = '0x77'):
-        hex_int = int(address, 16)
-        self.bmp280_enabled = 1
-        self.bmp280_address = hex_int
-#        self.bmp085_instance = BMP280.BMP280() #Temp filler, till i get the hardware and can actually use it.
-        return 0
+    def setup_bmp180(self, address = 0x77):
+        if self.bmp180_enabled:
+            self.bmp180_address = address
+            self.bmp180_instance = BMP085.BMP085(address=self.bmp180_address) #Temp filler, till i get the hardware and can actually use it.
+            return 0
 
 
-    def setup_pcf8591(self, address = '0x48'):
-        hex_int = int(address, 16)
-        self.pcf8591_address = hex_int
-        self.pcf8591_instance.setup(self.pcf8591_address)
-        self.pcf8591_enabled = 1
-        return 0
+    def setup_bmp280(self, address = 0x76):
+        if self.bmp280_enabled:
+            self.bmp280_address = address
+            self.bmp280_instance = bmp280.bmp280(address=self.bmp280_address) #Temp filler, till i get the hardware and can actually use it.
+            return 0
+
+
+    def setup_pcf8591(self, address = 0x48):
+        if self.pcf8591_enabled:
+            self.pcf8591_address = address
+            self.pcf8591_instance.setup(self.pcf8591_address)
+            return 0
 
 
     def setup_dht11(self, dht11_pin):
-        self.dht11_pin      = dht11_pin
-        self.dht11_instance = dht11.DHT11(pin=self.dht11_pin)
-        self.dht11_enabled = 1
-        return 0
+        if self.dht11_enabled:
+            self.dht11_pin      = dht11_pin
+            self.dht11_instance = dht11.DHT11(pin=self.dht11_pin)
+            return 0
 
 
     def setup_dht22(self, dht22_pin):
-        self.dht22_pin = dht22_pin
-        #self.dht22_instance = dht22.DHT22(pin=self.dht22_pin)   # will add after the dht22 order comes in :/ ...
-        self.dht22_enabled = 1
-        return 0
+        if self.dht22_enabled:
+            self.dht22_pin = dht22_pin
+            self.dht22_instance = dht11.DHT11(pin=self.dht22_pin)   # will add after the dht22 order comes in :/ ...
+            return 0
+
+
+    def setup_am2302(self, am2302_pin):
+        if self.am2302_enabled:
+            self.am2302_pin = am2302_pin
+            self.am2302_instance = dht11.DHT11(pin=self.am2302_pin)   # will add after the dht22 order comes in :/ ...
+            return 0
 
 
     def setup_camera(self):
@@ -233,7 +272,6 @@ class PIWEM:
             self.camera             = picamera.PiCamera()
             self.camera.brightness  = self.brightness
             self.camera.resolution  = self.resolution
-            self.camera_enabled     = 1
             return 0
 
 
@@ -281,9 +319,9 @@ class PIWEM:
         if self.bmp085_enabled:
             if self.debug:
                 print "bmp085_enabled"
-            self.conn.executemany("INSERT INTO weather_data.bmp085 ( pressure, c_temp, f_temp, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s) ",
+            self.conn.executemany("INSERT INTO weather_data.bmp085 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.bmp085_pressure, self.sensor_values.bmp085_temp[0], self.sensor_values.bmp085_temp[1], self.station_hash, timestamp),
+            (self.sensor_values.bmp085_pressure, self.sensor_values.bmp085_temp[0], self.sensor_values.bmp085_temp[1], self.sensor_values.bmp085_altitude, self.station_hash, timestamp),
             ])
             self.db.commit()
 
@@ -291,9 +329,9 @@ class PIWEM:
         if self.bmp180_enabled:
             if self.debug:
                 print "bmp180_enabled"
-            self.conn.executemany("INSERT INTO weather_data.bmp180 ( pressure, c_temp, f_temp, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s) ",
+            self.conn.executemany("INSERT INTO weather_data.bmp180 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.bmp180_pressure, self.sensor_values.bmp180_temp[0], self.sensor_values.bmp180_temp[1], self.station_hash, timestamp),
+            (self.sensor_values.bmp180_pressure, self.sensor_values.bmp180_temp[0], self.sensor_values.bmp180_temp[1], self.sensor_values.bmp180_altitude, self.station_hash, timestamp),
             ])
             self.db.commit()
 
@@ -301,9 +339,11 @@ class PIWEM:
         if self.bmp280_enabled:
             if self.debug:
                 print "bmp280_enabled"
-            self.conn.executemany("INSERT INTO weather_data.bmp280 ( pressure, c_temp, f_temp, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s) ",
+                print self.sensor_values.bmp280_pressure
+                print self.sensor_values.bmp280_temp
+            self.conn.executemany("INSERT INTO weather_data.bmp280 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.bmp280_pressure, self.sensor_values.bmp280_temp[0], self.sensor_values.bmp280_temp[1], self.station_hash, timestamp),
+            (self.sensor_values.bmp280_pressure, self.sensor_values.bmp280_temp[0], self.sensor_values.bmp280_temp[1], self.sensor_values.bmp280_altitude, self.station_hash, timestamp),
             ])
             self.db.commit()
 
@@ -359,6 +399,25 @@ class PIWEM:
         return 0
 
 
+    def get_am2302_data(self):
+        if self.am2302_enabled:
+            result = self.am2302_instance.read()
+            f_temp = ((int(result.temperature) * 9)/5)+32
+
+            if result.humidity is 0:
+                print "Error fetching DHT Humidity"
+                humidity_results = 0
+            else:
+                humidity_results = result.humidity
+            if result.temperature is 0:
+                temp_results = (0, 0)
+                self.sensor_values.fetch_error = [1, "DHT11 fetch error"]
+            else:
+                temp_results = (result.temperature, f_temp)
+            return temp_results, humidity_results*2
+        return 0
+
+
     def get_dht11_data(self):
         if self.dht11_enabled:
             result = self.dht11_instance.read()
@@ -391,8 +450,19 @@ class PIWEM:
                 raise IOError("Fetching Data Error BMP085 Temperature...")
 
             f_temp = ((int(temp) * 9)/5)+32
-            return (temp, f_temp), pressure
+
+            alt = self.bmp085_instance.read_altitude()
+
+            return (temp, f_temp), pressure, alt
         return 0
+
+
+    def get_bmp280_data(self):
+        if self.bmp280_enabled:
+            data = self.bmp280_instance.read()
+            if data[0] is 0:
+                raise IOError("BMP280 did not return any valid data.")
+            return data
 
 
     def get_thermistor_temp_data(self):   # Get Data from the Thermistor
@@ -445,15 +515,17 @@ class PIWEM:
         bmp085_data = self.get_bmp085_data()
         self.sensor_values.bmp085_temp = bmp085_data[0]
         self.sensor_values.bmp085_pressure = bmp085_data[1]
+        self.sensor_values.bmp085_altitude = bmp085_data[2]
 
 #        Future use, when I get the parts.
 #        bmp180_data = self.get_bmp180_data()
 #        self.sensor_values.bmp180_temp = bmp180_data[0]
 #        self.sensor_values.bmp180_pressure = bmp180_data[1]
 
-#        bmp280_data = self.get_bmp280_data()
-#        self.sensor_values.bmp280_temp = bmp280_data[0]
-#        self.sensor_values.bmp280_pressure = bmp280_data[1]
+        bmp280_data = self.get_bmp280_data()
+        self.sensor_values.bmp280_temp = bmp280_data[0]
+        self.sensor_values.bmp280_pressure = bmp280_data[1]
+        self.sensor_values.bmp280_altitude = bmp280_data[2]
 
         self.sensor_values.thermistor = self.get_thermistor_temp_data()
 
@@ -512,11 +584,22 @@ class PIWEM:
             print 'Humidity:    {0}%'.format(self.sensor_values.dht11_humidity)
             print 'Temperature = {0:0.2f} C'.format(self.sensor_values.dht11_temp[0])             # Print temperature in C
             print 'Temperature = {0:0.2f} F'.format(self.sensor_values.dht11_temp[1])             # Print temperature in F
-            print 'Pressure = {0:0.4f} Pa'.format(self.sensor_values.bmp085_pressure)   # Print pressure in pascal
-            print 'Pressure = {0:0.4f} mmhg'.format(self.sensor_values.bmp085_pressure / float(133.322368) )   # Print pressure in mm of Mercury
-            print 'Pressure = {0:0.4f} atm'.format(self.sensor_values.bmp085_pressure / float(101325) )    # Print pressure in Atmospheres
+            print "\r\n"
+            print '085 Pressure = {0:0.4f} Pa'.format(self.sensor_values.bmp085_pressure)   # Print pressure in pascal
+            print '085 Pressure = {0:0.4f} mmhg'.format(self.sensor_values.bmp085_pressure / float(133.322368) )   # Print pressure in mm of Mercury
+            print '085 Pressure = {0:0.4f} atm'.format(self.sensor_values.bmp085_pressure / float(101325) )    # Print pressure in Atmospheres
+            print '085 Altitude = {0:0.4f} m'.format(self.sensor_values.bmp085_altitude)
+            print "\r\n"
+            print '280 Pressure = {0:0.4f} Pa'.format(self.sensor_values.bmp280_pressure)   # Print pressure in pascal
+            print '280 Pressure = {0:0.4f} mmhg'.format(self.sensor_values.bmp280_pressure / float(133.322368) )   # Print pressure in mm of Mercury
+            print '280 Pressure = {0:0.4f} atm'.format(self.sensor_values.bmp280_pressure / float(101325) )    # Print pressure in Atmospheres
+            print '280 Altitude = {0:0.4f} m'.format(self.sensor_values.bmp280_altitude)
+            print "\r\n"
             print 'Photolevel = {0} '.format(self.sensor_values.photoresistor)    # Print photoresistor levels Higher number is lower light levels
             print ''
+        if self.debug:
+            pprint (vars(self.sensor_values))
+
         if self.camera_enabled:
             #draw.text((x, y),"Sample Text",(r,g,b))
             draw.text((10, 0), "Humidity:       " + str(self.sensor_values.dht11_humidity) + "% " ,self.text_color, font=font)

@@ -16,6 +16,7 @@ CREATE TABLE weather_data.bmp085
 (
   id int PRIMARY KEY NOT NULL AUTO_INCREMENT,
   pressure float(10) NOT NULL,
+  altitude float(10) NOT NULL,
   c_temp int NOT NULL,
   f_temp int NOT NULL,
   station_hash VARCHAR(64) NOT NULL,
@@ -27,6 +28,7 @@ CREATE TABLE weather_data.bmp180
 (
   id int PRIMARY KEY NOT NULL AUTO_INCREMENT,
   pressure float(10) NOT NULL,
+  altitude float(10) NOT NULL,
   c_temp int NOT NULL,
   f_temp int NOT NULL,
   station_hash VARCHAR(64) NOT NULL,
@@ -38,6 +40,7 @@ CREATE TABLE weather_data.bmp280
 (
   id int PRIMARY KEY NOT NULL AUTO_INCREMENT,
   pressure float(10) NOT NULL,
+  altitude float(10) NOT NULL,
   c_temp int NOT NULL,
   f_temp int NOT NULL,
   station_hash VARCHAR(64) NOT NULL,
