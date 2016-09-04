@@ -21,14 +21,8 @@ if not, write to the
 
 require "lib/config.php"; #www config
 require "lib/PiWeMFront.inc.php"; #PiWeM Front end class
-require $WWWconfig['http']['smarty_path']."/Smarty.class.php"; #get smarty..
 
 #setup smarty
-$smarty = new smarty();
-$smarty->templates      = "smarty/templates/";
-$smarty->templates_c    = "smarty/templates_c/" ;
-$smarty->cache_dir      = "smarty/cache/";
-
 #init PiWeM Front end class
 $PiWem_Front = new PiWeMFront($WWWconfig);
 
@@ -38,16 +32,31 @@ foreach($stations as $station)
 {
     $Stations_Data_Array[$station['station_hash']] = array();
     $Stations_Data_Array[$station['station_hash']]['station_name'] = $station['station_name'];
+    $Stations_Data_Array[$station['station_hash']]['station_hash'] = $station['station_hash'];
+
     $sensors = $PiWem_Front->GetStationSensors($station['station_hash']);
+    $Stations_Data_Array[$station['station_hash']]['sensors'] = array();
     foreach($sensors as $sensor=>$value)
     {
         if($value == "1")
         {
-            var_dump($sensor);
-            $Stations_Data_Array[$station['station_hash']][$sensor] = $PiWem_Front->GetStationSensorData($station['station_hash'], $sensor);
+            if($PiWem_Front->debug)
+            {
+                var_dump($sensor);
+            }
+
+            $Stations_Data_Array[$station['station_hash']]['sensors'][$sensor] = $PiWem_Front->GetStationSensorData($station['station_hash'], $sensor);
         }
     }
 }
-var_dump($Stations_Data_Array);
-#$smarty->assign("stations", $Stations_Data_Array);
-$smarty->display("index.tpl");
+if($PiWem_Front->debug)
+{
+    var_dump($Stations_Data_Array);
+}
+
+if(!$PiWem_Front->debug)
+{
+    $PiWem_Front->smarty->assign("stations", $Stations_Data_Array);
+    $PiWem_Front->smarty->display("index.tpl");
+}
+

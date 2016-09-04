@@ -20,6 +20,8 @@ if not, write to the
 */
 
 require "lib/SQL.php"; #the uh.. SQL class...
+require $WWWconfig['http']['smarty_path']."Smarty.class.php"; #get smarty..
+
 class PiWeMFront
 {
 
@@ -30,7 +32,12 @@ class PiWeMFront
             throw new Exception('$WWWconfig is not set!');
         }
         #now lets build the SQL class.
+        $this->debug = 0;
         $this->SQL = new SQL($WWWconfig['SQL']);
+        $this->smarty = new smarty();
+#        $this->smarty->templates      = "/var/www/html/piwem/smarty/templates/";
+#        $this->smarty->templates_c    = "/var/www/html/piwem/smarty/templates_c/" ;
+#        $this->smarty->cache_dir      = "/var/www/html/piwem/smarty/cache/";
     }
 
     function GetStations()
@@ -67,7 +74,11 @@ class PiWeMFront
 
         $query .= "FROM `weather_data`.`$sensor` WHERE `station_hash` = '$station_hash' ORDER BY `id` DESC LIMIT 1";
 
-        #var_dump($query);
+        if($this->debug)
+        {
+            var_dump($query);
+        }
+
 
         $result_query = $this->SQL->conn->query($query);
         #var_dump($result_query);
