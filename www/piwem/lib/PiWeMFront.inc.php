@@ -42,17 +42,83 @@ class PiWeMFront
 
     function GetStations()
     {
-        $result = $this->SQL->conn->query("SELECT `id`, `station_name`, `station_hash` FROM `weather_data`.`Stations` ORDER BY id ASC");
+        $result = $this->SQL->conn->query("SELECT `station_name`, `station_hash` FROM `weather_data`.`Stations` ORDER BY id ASC");
         $fetch = $result->fetchall(2);
         return $fetch;
     }
 
-    function GetStationSensorData($station_hash = "", $sensor = "")
+    function GetStationInfo($station_hash)
     {
+        $prep = $this->SQL->conn->prepare("SELECT `station_name`, `station_hash` FROM `weather_data`.`Stations` WHERE `station_hash` = ? ORDER BY id ASC");
+        $prep->bindParam(1, $station_hash, PDO::PARAM_STR);
+        $prep->execute();
+        $fetch = $prep->fetch(2);
+        return $fetch;
+    }
+
+    function GetStationSensorData($station_hash = "", $sensor = "", $limit = 1)
+    {
+        $query_desc = "DESCRIBE `weather_data`.`$sensor`";
+        if($this->debug)
+        {
+            var_dump($query_desc);
+        }
+        $result_desc = $this->SQL->conn->query($query_desc);
+        $Desc_Fetch = $result_desc->fetchAll(2);
+        if($this->debug)
+        {
+            var_dump($Desc_Fetch);
+        }
+        $query = "SELECT ";
+        $t = 0;
+        foreach($Desc_Fetch as $col)
+        {
+            if($col['Field'] == "id" || $col['Field'] == "station_hash")
+            {
+                continue;
+            }
+            if($t == 0)
+            {
+                $query .= $col['Field'];
+            }else
+            {
+                $query .= ", ".$col['Field']." ";
+            }
+            $t++;
+        }
+
+        $query .= "FROM `weather_data`.`$sensor` WHERE `station_hash` = '$station_hash' ORDER BY `id` DESC LIMIT $limit";
+
+        if($this->debug)
+        {
+            var_dump($query);
+        }
+
+
+        $result_query = $this->SQL->conn->query($query);
+        if($this->debug)
+        {
+            var_dump($result_query);
+        }
+        if ($result_query === false)
+        {
+            return 0;
+        }
+        $fetch = $result_query->fetchall(2);
+        return $fetch;
+    }
+
+
+    function GetStationSensorDataAll($station_hash = "", $sensor = "")
+    {
+        if($this->debug)
+        {
+            var_dump($sensor);
+        }
         $query_desc = "DESCRIBE `weather_data`.`$sensor`";
         #var_dump($query_desc);
         $result_desc = $this->SQL->conn->query($query_desc);
-        $Desc_Fetch = $result_desc->fetchAll(2);
+        $Desc_Fetch = $result_desc->fetchall(2);
         #var_dump($Desc_Fetch);
         $query = "SELECT ";
         $t = 0;
@@ -72,7 +138,7 @@ class PiWeMFront
             $t++;
         }
 
-        $query .= "FROM `weather_data`.`$sensor` WHERE `station_hash` = '$station_hash' ORDER BY `id` DESC LIMIT 1";
+        $query .= "FROM `weather_data`.`$sensor` WHERE `station_hash` = '$station_hash' ORDER BY `id` DESC";
 
         if($this->debug)
         {
@@ -86,18 +152,21 @@ class PiWeMFront
         {
             return 0;
         }
-        $fetch = $result_query->fetch(2);
+        $fetch = $result_query->fetchall(2);
 
         return $fetch;
     }
 
+
     function GetStationSensors($station_hash = "")
     {
-        $prep = $this->SQL->conn->prepare("SELECT dht11, dht22, bmp085, bmp180, bmp280, thermistor, analog_temp_sensor, photoresistor FROM `weather_data`.`Station_sensors` WHERE station_hash = ?");
+        $prep = $this->SQL->conn->prepare("SELECT dht11, dht22, bmp085, bmp180, bmp280, thermistor, analog_temp_sensor, photoresistor FROM `weather_data`.`Station_sensors` WHERE station_hash = ? LIMIT 1");
         $prep->bindParam(1, $station_hash, PDO::PARAM_STR);
         $prep->execute();
         $fetch = $prep->fetch(2);
-
+        if($this->debug) {
+            var_dump($fetch);
+        }
         return $fetch;
     }
 }
