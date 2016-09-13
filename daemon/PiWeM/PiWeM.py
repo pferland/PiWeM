@@ -404,16 +404,16 @@ class PIWEM:
             f_temp = ((int(result.temperature) * 9)/5)+32
             print result
             if result.humidity is 0:
-                print "Error fetching DHT Humidity"
+                print "Error fetching DHT Data"
                 humidity_results = 0
             else:
                 humidity_results = result.humidity
             if result.temperature is 0:
                 temp_results = (0, 0)
-                self.sensor_values.fetch_error = [1, "DHT11 fetch error"]
+                self.sensor_values.fetch_error = [1, "AM2302 fetch error"]
             else:
                 temp_results = (result.temperature, f_temp)
-            return temp_results, humidity_results*2
+            return temp_results, humidity_results
         return 0
 
 
@@ -423,7 +423,7 @@ class PIWEM:
             f_temp = ((int(result.temperature) * 9)/5)+32
 
             if result.humidity is 0:
-                print "Error fetching DHT Humidity"
+                print "Error fetching DHT Data"
                 humidity_results = 0
             else:
                 humidity_results = result.humidity
@@ -432,7 +432,7 @@ class PIWEM:
                 self.sensor_values.fetch_error = [1, "DHT11 fetch error"]
             else:
                 temp_results = (result.temperature, f_temp)
-            return temp_results, humidity_results*2
+            return temp_results, humidity_results
         return 0
 
 
