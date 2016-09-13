@@ -23,6 +23,9 @@
 							<li>
 								Last Update: {$station_data.lastupdate}
 							</li>
+							<li>
+								Altitude: {$station_data.altitude} Meters
+							</li>
 						</ul>
 					</td>
 

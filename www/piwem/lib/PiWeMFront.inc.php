@@ -18,25 +18,21 @@ if not, write to the
    59 Temple Place, Suite 330,
    Boston, MA 02111-1307 USA
 */
-
-require "lib/SQL.php"; #the uh.. SQL class...
-require $WWWconfig['http']['smarty_path']."Smarty.class.php"; #get smarty..
-
 class PiWeMFront
 {
     function __construct($WWWconfig = array())
     {
-        if( @$WWWconfig['SQL'] == "" )
+        if( @$WWWconfig === array() )
         {
             throw new Exception('$WWWconfig is not set!');
         }
+        require "lib/SQL.php"; #the uh.. SQL class...
+        require $WWWconfig['http']['smarty_path']."Smarty.class.php"; #get smarty..
         #now lets build the SQL class.
+        $this->Alt_Sensor = $WWWconfig['http']['Alt_Sensor'];
         $this->debug = 0;
         $this->SQL = new SQL($WWWconfig['SQL']);
         $this->smarty = new smarty();
-#        $this->smarty->templates      = "/var/www/html/piwem/smarty/templates/";
-#        $this->smarty->templates_c    = "/var/www/html/piwem/smarty/templates_c/" ;
-#        $this->smarty->cache_dir      = "/var/www/html/piwem/smarty/cache/";
     }
 
     function GetStations()
@@ -53,6 +49,14 @@ class PiWeMFront
         $prep->execute();
         $fetch = $prep->fetch(2);
         return $fetch;
+    }
+
+    function GetStationAltitude($station_hash = "", $sensor)
+    {
+        $prep = $this->SQL->conn->prepare("SELECT altitude FROM `weather_data`.`$sensor` WHERE `station_hash` = ? ORDER BY `id` DESC LIMIT 1");
+        $prep->bindParam(1, $station_hash, PDO::PARAM_STR);
+        $prep->execute();
+        return $prep->fetch(2)['altitude'];
     }
 
     function GetStationSensorData($station_hash = "", $sensor = "", $limit = 1)
