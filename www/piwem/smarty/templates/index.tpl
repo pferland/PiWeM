@@ -18,7 +18,7 @@
 						</tr>
 					{/if}
 
-					{if $key eq 'dht11' or $key eq 'dht22'}
+					{if $key eq 'dht11' or $key eq 'dht22' or $key eq 'am3202'}
 						<tr class="sensor_header">
 							<th colspan="2">{$key}</th>
 						</tr>
@@ -27,7 +27,7 @@
 							<td>{$sensor.c_temp}</td>
 						</tr>
 						<tr class="sensor_values">
-							<td>Fer</td>
+							<td>Fahrenheit</td>
 							<td>{$sensor.f_temp}</td>
 						</tr>
 						<tr class="sensor_values">
@@ -45,7 +45,7 @@
 							<td>{$sensor.c_temp}</td>
 						</tr>
 						<tr class="sensor_values">
-							<td>Fer</td>
+							<td>Fahrenheit</td>
 							<td>{$sensor.f_temp}</td>
 						</tr>
 						<tr class="sensor_values">
@@ -67,7 +67,7 @@
 							<td>{$sensor.c_temp}</td>
 						</tr>
 						<tr class="sensor_values">
-							<td>Fer</td>
+							<td>Fahrenheit</td>
 							<td>{$sensor.f_temp}</td>
 						</tr>
 					{/if}

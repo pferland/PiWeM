@@ -24,7 +24,7 @@ require "lib/PiWeMFront.inc.php"; #PiWeM Front end class
 
 $limit = ( isset($_REQUEST['limit']) ? $_REQUEST['limit'] : 500 );
 $camera_enabled = 0;
-
+$user_tz = -18000;
 #init PiWeM Front end class
 $PiWem_Front = new PiWeMFront($WWWconfig);
 
@@ -59,7 +59,7 @@ foreach($sensors as $sensor=>$value)
 
     foreach($data as $key=>$value)
     {
-        $data[$key]['timestamp'] = date('H:i:s', strtotime($value['timestamp']));
+        $data[$key]['timestamp'] = date('H:i:s', strtotime($value['timestamp']) + $user_tz);
     }
 
 

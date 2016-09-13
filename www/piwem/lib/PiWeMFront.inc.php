@@ -101,15 +101,17 @@ class PiWeMFront
             $query .= "AND `$not_zero_field` NOT LIKE 0 ";
         }
 
-        $query .= "ORDER BY `id` DESC LIMIT $limit";
+        $query .= "ORDER BY `id` DESC ";
 
+        if($limit !== 0)
+        {
+            $query .= "LIMIT $limit";
+        }
 	
         if($this->debug)
         {
             var_dump($query);
         }
-
-
         $result_query = $this->SQL->conn->query($query);
         if($this->debug)
         {
@@ -119,58 +121,17 @@ class PiWeMFront
         {
             return 0;
         }
-        $fetch = $result_query->fetchall(2);
+
+        if($limit === 1)
+        {
+            $fetch = $result_query->fetch(2);
+        }else
+        {
+            $fetch = $result_query->fetchall(2);
+        }
         return $fetch;
     }
 
-
-    function GetStationSensorDataAll($station_hash = "", $sensor = "")
-    {
-        if($this->debug)
-        {
-            var_dump($sensor);
-        }
-        $query_desc = "DESCRIBE `weather_data`.`$sensor`";
-        #var_dump($query_desc);
-        $result_desc = $this->SQL->conn->query($query_desc);
-        $Desc_Fetch = $result_desc->fetchall(2);
-        #var_dump($Desc_Fetch);
-        $query = "SELECT ";
-        $t = 0;
-        foreach($Desc_Fetch as $col)
-        {
-            if($col['Field'] == "id" || $col['Field'] == "station_hash")
-            {
-                continue;
-            }
-            if($t == 0)
-            {
-                $query .= $col['Field'];
-            }else
-            {
-                $query .= ", ".$col['Field']." ";
-            }
-            $t++;
-        }
-
-        $query .= "FROM `weather_data`.`$sensor` WHERE `station_hash` = '$station_hash' ORDER BY `id` DESC";
-
-        if($this->debug)
-        {
-            var_dump($query);
-        }
-
-
-        $result_query = $this->SQL->conn->query($query);
-        #var_dump($result_query);
-        if ($result_query === false)
-        {
-            return 0;
-        }
-        $fetch = $result_query->fetchall(2);
-
-        return $fetch;
-    }
 
 
     function GetStationSensors($station_hash = "")

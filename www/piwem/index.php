@@ -45,7 +45,7 @@ foreach($stations as $station)
                 var_dump($sensor);
             }
 
-            $Stations_Data_Array[$station['station_hash']]['sensors'][$sensor] = $PiWem_Front->GetStationSensorData($station['station_hash'], $sensor);
+            $Stations_Data_Array[$station['station_hash']]['sensors'][$sensor] = $PiWem_Front->GetStationSensorData($station['station_hash'], $sensor, 1);
         }
     }
 }
