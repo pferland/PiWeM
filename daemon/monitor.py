@@ -37,6 +37,7 @@ while 1: #lets start the main loop!!!!!!!!
 
     try:
         get_data = mon.get_data_trigger()
+        mon.update_station_timestamp()
         mon.loop_int = mon.loop_int + 1  #syntax parser says it can be shorter, but screw it, i want to know what its doing and its only what ~100k of text or am i too drunk to math?
         time.sleep(mon.sleep_time) #int(settings['sleep_time']))
 

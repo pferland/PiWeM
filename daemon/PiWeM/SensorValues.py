@@ -17,6 +17,9 @@ class SensorValues(object):
     dht22_temp          = []
     dht22_humidity      = 0
 
+    am2302_temp         = []
+    am2302_humidity     = 0
+
     thermistor          = 0
     analog_temp_sensor  = 0
     photoresistor       = 0

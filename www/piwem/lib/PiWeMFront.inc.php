@@ -24,7 +24,6 @@ require $WWWconfig['http']['smarty_path']."Smarty.class.php"; #get smarty..
 
 class PiWeMFront
 {
-
     function __construct($WWWconfig = array())
     {
         if( @$WWWconfig['SQL'] == "" )
@@ -49,7 +48,7 @@ class PiWeMFront
 
     function GetStationInfo($station_hash)
     {
-        $prep = $this->SQL->conn->prepare("SELECT `station_name`, `station_hash` FROM `weather_data`.`Stations` WHERE `station_hash` = ? ORDER BY id ASC");
+        $prep = $this->SQL->conn->prepare("SELECT `station_name`, `station_hash`, `lastupdate` FROM `weather_data`.`Stations` WHERE `station_hash` = ? ORDER BY id ASC");
         $prep->bindParam(1, $station_hash, PDO::PARAM_STR);
         $prep->execute();
         $fetch = $prep->fetch(2);
@@ -69,6 +68,7 @@ class PiWeMFront
         {
             var_dump($Desc_Fetch);
         }
+        $not_zero_field = "";
         $query = "SELECT ";
         $t = 0;
         foreach($Desc_Fetch as $col)
@@ -84,11 +84,26 @@ class PiWeMFront
             {
                 $query .= ", ".$col['Field']." ";
             }
+            if($col['Field'] == "humidity")
+            {
+                $not_zero_field = "humidity";
+            }elseif($col['Field'] == "pressure")
+            {
+                $no_zero_field = "pressure";
+            }
             $t++;
         }
 
-        $query .= "FROM `weather_data`.`$sensor` WHERE `station_hash` = '$station_hash' ORDER BY `id` DESC LIMIT $limit";
+        $query .= "FROM `weather_data`.`$sensor` WHERE `station_hash` = '$station_hash' ";
+        
+        if($not_zero_field != "")
+        {
+            $query .= "AND `$not_zero_field` NOT LIKE 0 ";
+        }
 
+        $query .= "ORDER BY `id` DESC LIMIT $limit";
+
+	
         if($this->debug)
         {
             var_dump($query);
@@ -160,7 +175,7 @@ class PiWeMFront
 
     function GetStationSensors($station_hash = "")
     {
-        $prep = $this->SQL->conn->prepare("SELECT dht11, dht22, bmp085, bmp180, bmp280, thermistor, analog_temp_sensor, photoresistor FROM `weather_data`.`Station_sensors` WHERE station_hash = ? LIMIT 1");
+        $prep = $this->SQL->conn->prepare("SELECT dht11, dht22, bmp085, bmp180, bmp280, thermistor, analog_temp_sensor, photoresistor, camera FROM `weather_data`.`Station_sensors` WHERE station_hash = ? LIMIT 1");
         $prep->bindParam(1, $station_hash, PDO::PARAM_STR);
         $prep->execute();
         $fetch = $prep->fetch(2);

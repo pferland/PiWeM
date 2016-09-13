@@ -22,7 +22,9 @@ if not, write to the
 require "lib/config.php"; #www config
 require "lib/PiWeMFront.inc.php"; #PiWeM Front end class
 
-#setup smarty
+$limit = ( isset($_REQUEST['limit']) ? $_REQUEST['limit'] : 500 );
+$camera_enabled = 0;
+
 #init PiWeM Front end class
 $PiWem_Front = new PiWeMFront($WWWconfig);
 
@@ -33,6 +35,7 @@ $station = $PiWem_Front->GetStationInfo($_REQUEST['station_hash']);
 
 $Station_Data_Array['station_name'] = $station['station_name'];
 $Station_Data_Array['station_hash'] = $station['station_hash'];
+$Station_Data_Array['lastupdate'] = $station['lastupdate'];
 
 $sensors = $PiWem_Front->GetStationSensors($Station_Data_Array['station_hash']);
 
@@ -46,13 +49,26 @@ foreach($sensors as $sensor=>$value)
     if(!$flag)
     {
         continue;
+    }elseif($flag && ($value == 'camera')  )
+    {
+        $camera_enabled = 1;
     }
     $Station_Data_Array['sensors'][$sensor]['name'] = $sensor;
-    $Station_Data_Array['sensors'][$sensor]['data'] = $PiWem_Front->GetStationSensorData($Station_Data_Array['station_hash'], $sensor, 100);
+
+    $data = $PiWem_Front->GetStationSensorData($Station_Data_Array['station_hash'], $sensor, $limit);
+
+    foreach($data as $key=>$value)
+    {
+        $data[$key]['timestamp'] = date('H:i:s', strtotime($value['timestamp']));
+    }
+
+
+    $Station_Data_Array['sensors'][$sensor]['data'] = $data;
 }
 
 if(!$PiWem_Front->debug)
 {
+    $PiWem_Front->smarty->assign('camera_enabled', $camera_enabled);
     $PiWem_Front->smarty->assign("stations", $stations);
     $PiWem_Front->smarty->assign("station_data", $Station_Data_Array);
     $PiWem_Front->smarty->display("station.tpl");

@@ -21,24 +21,26 @@
 								Station Name: {$station_data.station_name}
 							</li>
 							<li>
-								Last Update: {$station_data.last_update}
+								Last Update: {$station_data.lastupdate}
 							</li>
 						</ul>
 					</td>
 
 					<td style="width: 50%; text-align:right">
+						{if $camera_enabled eq 1}
 						<img src="{$camera.image_tn_path}" height="320px">
+						{/if}
 					</td>
 				</tr>
 				{foreach from=$station_data.sensors item=sensor}
-					<th><h2>{$sensor.name}</h2></th>
+					<th><br><br><h2>{$sensor.name}</h2></th>
 					{if $sensor.name eq 'dht11' || $sensor.name eq 'dht22'} <!-- detect the sensor -->
 						<tr>
 							<th>Humidity</th>
 						</tr>
 						<tr>
 							<td style="height:300px; vertical-align: top" colspan="2">
-								<div id="chart_div_{$sensor.name}_humidity" style="width: 100%; height: 90%; vertical-align: top"></div>
+								<div id="chart_div_{$sensor.name}_humidity" style="width: 100%; height: 100%; vertical-align: top"></div>
 							</td>
 						</tr>
 						<tr>
@@ -46,7 +48,7 @@
 						</tr>
 						<tr>
 							<td style="height:300px; vertical-align: top" colspan="2">
-								<div id="chart_div_{$sensor.name}_temp" style="width: 100%; height: 90%; vertical-align: top"></div>
+								<div id="chart_div_{$sensor.name}_temp" style="width: 100%; height: 100%; vertical-align: top"></div>
 								<img height="25" border="0">
 							</td>
 						</tr>
@@ -57,7 +59,7 @@
 						</tr>
 						<tr>
 							<td style="height:300px; vertical-align: top" colspan="2">
-								<div id="chart_div_{$sensor.name}_pressure" style="width: 100%; height: 90%; vertical-align: top"></div>
+								<div id="chart_div_{$sensor.name}_pressure" style="width: 100%; height: 100%; vertical-align: top"></div>
 							</td>
 						</tr>
 						<tr>
@@ -65,7 +67,7 @@
 						</tr>
 						<tr>
 							<td style="height:300px; vertical-align: top" colspan="2">
-								<div id="chart_div_{$sensor.name}_temp" style="width: 100%; height: 90%; vertical-align: top"></div>
+								<div id="chart_div_{$sensor.name}_temp" style="width: 100%; height: 100%; vertical-align: top"></div>
 								<img height="25" border="0">
 							</td>
 						</tr>
@@ -76,7 +78,7 @@
 						</tr>
 						<tr>
 							<td style="height:300px; vertical-align: top" colspan="2">
-								<div id="chart_div_{$sensor.name}" style="width: 100%; height: 90%; vertical-align: top"></div>
+								<div id="chart_div_{$sensor.name}" style="width: 100%; height: 100%; vertical-align: top"></div>
 								<img height="25" border="0">
 							</td>
 						</tr>
@@ -87,7 +89,7 @@
 						</tr>
 						<tr>
 							<td style="height:300px; vertical-align: top" colspan="2">
-								<div id="chart_div_{$sensor.name}" style="width: 100%; height: 90%; vertical-align: top"></div>
+								<div id="chart_div_{$sensor.name}" style="width: 100%; height: 100%; vertical-align: top"></div>
 								<img height="25" border="0">
 							</td>
 						</tr>

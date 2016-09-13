@@ -208,7 +208,7 @@
 				selectionMode: 'multiple',
 				title: "{$sensor.name}",
 				crosshair: {ldelim} trigger: 'both' {rdelim},
-				chartArea: {ldelim} width: '100%', height: '70%'},
+				chartArea: {ldelim} width: '100%', height: '100%'},
 				legend: {ldelim} position: 'none'},
 				titlePosition: 'none',
 				hAxis: {ldelim} textPosition: 'bottom'{rdelim},

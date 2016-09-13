@@ -2,6 +2,17 @@ drop DATABASE weather_data;
 
 create DATABASE weather_data;
 
+CREATE TABLE weather_data.am2302
+(
+  id int PRIMARY KEY NOT NULL AUTO_INCREMENT,
+  c_temp int NOT NULL,
+  f_temp int NOT NULL,
+  humidity int NOT NULL,
+  station_hash VARCHAR(64) NOT NULL,
+  timestamp VARCHAR(255) NOT NULL
+);
+
+
 CREATE TABLE weather_data.analog_temp_sensor
 (
   id int PRIMARY KEY NOT NULL AUTO_INCREMENT,
@@ -75,6 +86,17 @@ CREATE TABLE weather_data.Stations
   id int PRIMARY KEY NOT NULL AUTO_INCREMENT,
   station_name VARCHAR(255) NOT NULL,
   station_hash VARCHAR(64) UNIQUE KEY NOT NULL,
+  lastupdate VARCHAR(64) NOT NULL,
+  timestamp VARCHAR(255) NOT NULL
+);
+
+
+CREATE TABLE weather_data.camera_images
+(
+  id int PRIMARY KEY NOT NULL AUTO_INCREMENT,
+  image_path TEXT NOT NULL,
+  image_tn_path TEXT NOT NULL,
+  station_hash VARCHAR(64) NOT NULL,
   timestamp VARCHAR(255) NOT NULL
 );
 
@@ -85,6 +107,7 @@ CREATE TABLE weather_data.Station_sensors
   station_hash VARCHAR(64) NOT NULL,
   dht11 BOOLEAN NOT NULL,
   dht22 BOOLEAN NOT NULL,
+  am2302 BOOLEAN NOT NULL,
   bmp085 BOOLEAN NOT NULL,
   bmp180 BOOLEAN NOT NULL,
   bmp280 BOOLEAN NOT NULL,

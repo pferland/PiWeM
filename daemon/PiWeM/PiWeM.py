@@ -1,20 +1,14 @@
 import RPi.GPIO as GPIO
 import PCF8591 as ADC
+import Adafruit_DHT as DHT
 import Adafruit_BMP.BMP085 as BMP085
-#import Adafruit_DHT.AM2302 as AM2302
-import bmp280
-
-#import Adafruit_BMP.BMP180 as BMP180 #Temp filler, till i get the hardware and can actually use it.
-#import Adafruit_BMP.BMP280 as BMP280 #Temp filler, till i get the hardware and can actually use it.
-import picamera, socket, sys, uuid, os, math, MySQLdb, time, datetime, SensorValues
+import picamera, socket, sys, uuid, os, math, MySQLdb, time, datetime, SensorValues, bmp280
 
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 from dht11 import dht11
-
 from pprint import pprint
-
 
 global sensor
 
@@ -52,12 +46,14 @@ class PIWEM:
     # GPIO Pins for devices
     dht11_pin   = 0
     dht22_pin   = 0
+    am2302_pin  = 0
     ds18b20_pin = 0
 
 
     #Init values for the DHT sensors. Supports both the DHT11 and DHT22. Others will be added when I find and can buy other devices.
     dht11_instance = None
     dht22_instance = None
+    am2302_instance = None
 
     # RasPi camera settings, defaults should work for both v1 and v2 of the camera
     camera              = None
@@ -170,13 +166,15 @@ class PIWEM:
 
 
     def setup_sensors(self):
-        self.setup_dht11( dht11_pin=int(self.dht11_pin) )
-        self.setup_dht22( dht22_pin=int(self.dht22_pin) )
+        self.setup_dht11( pin=int(self.dht11_pin) )
+        self.setup_dht22( pin=int(self.dht22_pin) )
+        self.setup_am2302( pin=int(self.am2302_pin) )
+
         self.setup_bmp085(address=self.bmp085_address) # Low (ground) on sda for the BMP is 0x76, High is 0x77
         #self.setup_bmp180(address=self.bmp180_address # Temp til I get a 180 to test with.)
         self.setup_bmp280(address=self.bmp280_address)
+
         self.setup_pcf8591(address=self.pcf8591_address) # Default address for the PCF8591 is 0x48, so its hardcoded, but you can set it to what ever you want with the address variable
-        self.setup_am2302(self.am2302_pin)
         self.setup_camera()
 
 
@@ -198,10 +196,10 @@ class PIWEM:
 
 
     def update_station_sensors(self):
-        self.conn.executemany("UPDATE weather_data.Station_sensors SET bmp085 = %s, bmp180 = %s, bmp280 = %s, dht11 = %s, dht22 = %s, thermistor = %s, analog_temp_sensor = %s, photoresistor = %s, camera = %s "
+        self.conn.executemany("UPDATE weather_data.Station_sensors SET bmp085 = %s, bmp180 = %s, bmp280 = %s, dht11 = %s, dht22 = %s, am2302 = %s, thermistor = %s, analog_temp_sensor = %s, photoresistor = %s, camera = %s "
                               "WHERE station_hash = %s ",
         [
-            (self.bmp085_enabled, self.bmp180_enabled, self.bmp280_enabled, self.dht11_enabled, self.dht22_enabled, self.thermistor_enabled, self.analog_temp_sensor_enabled, self.photoresistor_enabled, self.camera_enabled, self.station_hash),
+            (self.bmp085_enabled, self.bmp180_enabled, self.bmp280_enabled, self.dht11_enabled, self.dht22_enabled, self.am2302_enabled, self.thermistor_enabled, self.analog_temp_sensor_enabled, self.photoresistor_enabled, self.camera_enabled, self.station_hash),
         ])
         self.db.commit()
         return 0
@@ -246,24 +244,25 @@ class PIWEM:
             return 0
 
 
-    def setup_dht11(self, dht11_pin):
+    def setup_dht11(self, pin):
         if self.dht11_enabled:
-            self.dht11_pin      = dht11_pin
+            self.dht11_pin      = pin
             self.dht11_instance = dht11.DHT11(pin=self.dht11_pin)
             return 0
 
 
-    def setup_dht22(self, dht22_pin):
+    def setup_dht22(self, pin):
         if self.dht22_enabled:
-            self.dht22_pin = dht22_pin
+            self.dht22_pin = pin
             self.dht22_instance = dht11.DHT11(pin=self.dht22_pin)   # will add after the dht22 order comes in :/ ...
             return 0
 
 
-    def setup_am2302(self, am2302_pin):
+    def setup_am2302(self, pin):
         if self.am2302_enabled:
-            self.am2302_pin = am2302_pin
-            self.am2302_instance = dht11.DHT11(pin=self.am2302_pin)   # will add after the dht22 order comes in :/ ...
+            self.am2302_pin = pin
+            self.am2302_instance = dht11.DHT11(pin=self.am2302_pin)
+            #self.am2302_instance = DHT   # will add after the dht22 order comes in :/ ...
             return 0
 
 
@@ -403,7 +402,7 @@ class PIWEM:
         if self.am2302_enabled:
             result = self.am2302_instance.read()
             f_temp = ((int(result.temperature) * 9)/5)+32
-
+            print result
             if result.humidity is 0:
                 print "Error fetching DHT Humidity"
                 humidity_results = 0
@@ -613,3 +612,14 @@ class PIWEM:
  #           print("Data return error.")
  #           return 0
 
+
+    def update_station_timestamp(self):
+        ts = time.time()
+        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        if self.debug:
+            print "Update Station Timestamp "+timestamp
+        self.conn.executemany("UPDATE weather_data.Stations SET `lastupdate` = %s WHERE station_hash = %s",
+        [
+            (timestamp, self.station_hash),
+        ])
+        self.db.commit()
