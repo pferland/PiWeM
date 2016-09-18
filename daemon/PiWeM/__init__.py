@@ -1,1 +1,1 @@
-__all__ = ['pimon', 'dht11', 'PCM8591']
+__all__ = ['PIWEM', 'dht11', 'PCM8591', 'SensorData', 'bmp280']
