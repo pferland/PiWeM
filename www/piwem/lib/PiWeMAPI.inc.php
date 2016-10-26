@@ -47,7 +47,6 @@ class PiWeMAPI
         }
     }
 
-
     function importdata()
     {
         if(!isset($this->payload) || empty($this->payload))
@@ -246,17 +245,6 @@ class PiWeMAPI
         $prep->bindParam(1, $data['photoresistor'], PDO::PARAM_STR);
         $prep->bindParam(2, $this->station_hash, PDO::PARAM_STR);
         $prep->bindParam(3, $this->timestamp, PDO::PARAM_STR);
-        $prep->execute();
-        return 1;
-    }
-
-    function insert_station()
-    {
-        $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`Stations` ( station_name, station_hash, station_key, `timestamp`) VALUES (?, ?, ?, ?)");
-        $prep->bindParam(1, $this->station_name, PDO::PARAM_STR);
-        $prep->bindParam(2, $this->station_hash, PDO::PARAM_STR);
-        $prep->bindParam(4, $this->station_key, PDO::PARAM_STR);
-        $prep->bindParam(5, $this->timestamp, PDO::PARAM_STR);
         $prep->execute();
         return 1;
     }
