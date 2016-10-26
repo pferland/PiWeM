@@ -11,6 +11,10 @@ sql_user = root
 ;SQL User Password
 sql_password = toor
 
+PiWem_Central_Server = http://dev.randomintervals.com
+
+Upload_To_Central_Server = 1
+
 ;How long til the next run of the loop to get data
 sleep_time = 3600
 

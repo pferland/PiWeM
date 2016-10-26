@@ -36,6 +36,8 @@ class PIWEM:
     station_name    = ""
     payload         = None
     json_data       = ""
+    PiWem_Central_Server = ""
+    Upload_To_Central_Server = 0
 
     #Where you want the weather data to be logged to. so far just supports CSV and TSV Well not really, but it will be
     sql_log_data    = 1
@@ -165,6 +167,9 @@ class PIWEM:
         self.photosresistor_channel = int( settings['photoresistor_channel'] )# Photoresistor on the PCF8591 channel 0
         self.ats_channel = int(settings['ats_channel'])
         self.thermistor_channel = int(settings['thermistor_channel'])
+
+        self.PiWem_Central_Server = settings['piwem_central_server']
+        self.Upload_To_Central_Server = int(settings['upload_to_central_server'])
 
         # initialize GPIO
         GPIO.setwarnings(False)
@@ -366,10 +371,10 @@ class PIWEM:
             if self.debug:
                 print "bmp280_enabled"
                 print self.sensor_values.bmp280.pressure
-                print self.sensor_values.bmp280_temp
+                print self.sensor_values.bmp280.temp
             self.conn.executemany("INSERT INTO weather_data.bmp280 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.bmp280.pressure, self.sensor_values.bmp280_temp[0], self.sensor_values.bmp280_temp[1], self.sensor_values.bmp280_altitude, self.station_hash, timestamp),
+            (self.sensor_values.bmp280.pressure, self.sensor_values.bmp280.temp[0], self.sensor_values.bmp280.temp[1], self.sensor_values.bmp280.altitude, self.station_hash, timestamp),
             ])
             self.db.commit()
 
@@ -379,7 +384,7 @@ class PIWEM:
                 print "dht11_enabled"
             self.conn.executemany("INSERT INTO weather_data.dht11 ( c_temp, f_temp, humidity, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.dht11_temp[0], self.sensor_values.dht11_temp[1], self.sensor_values.dht11_humidity, self.station_hash, timestamp),
+            (self.sensor_values.dht11.temp[0], self.sensor_values.dht11.temp[1], self.sensor_values.dht11.humidity, self.station_hash, timestamp),
             ])
             self.db.commit()
 
@@ -389,7 +394,7 @@ class PIWEM:
                 print "dht22_enabled"
             self.conn.executemany("INSERT INTO weather_data.dht22 ( c_temp, f_temp, humidity, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.dht22_temp[0], self.sensor_values.dht22_temp[1], self.sensor_values.dht22_humidity, self.station_hash, timestamp),
+            (self.sensor_values.dht22.temp[0], self.sensor_values.dht22.temp[1], self.sensor_values.dht22.humidity, self.station_hash, timestamp),
             ])
             self.db.commit()
 
@@ -409,7 +414,7 @@ class PIWEM:
                 print "analog_temp_sensor_enabled"
             self.conn.executemany("INSERT INTO weather_data.analog_temp_sensor ( c_temp, f_temp, station_hash, `timestamp` ) VALUES (%s, %s, %s, %s) ",
             [
-            (self.sensor_values.ats_temp[0], self.sensor_values.ats_temp[1], self.station_hash, timestamp),
+            (self.sensor_values.analog_temp_sensor[0], self.sensor_values.analog_temp_sensor[1], self.station_hash, timestamp),
             ])
             self.db.commit()
 
@@ -600,6 +605,10 @@ class PIWEM:
 #        if not self.sensor_values.fetch_error:
         self.insert_data()
 
+        if self.Upload_To_Central_Server:
+            print "Upload data to the Central Server."
+            self.upload_data()
+
         self.sensor_values.fetch_error = 0
 
         if self.verbose:
@@ -662,14 +671,14 @@ class PIWEM:
 
         json_data = self.json_dump()
 
-        url = 'http://172.16.0.94/piwem/api/api.php'
+        url = self.PiWem_Central_Server + '/piwem/api/api.php'
 
         values = {'payload' : json_data, 'station_hash': self.station_hash, 'station_key': self.station_key, 'mode': 'importdata'}
 
         data = urllib.urlencode(values)
         fullurl = url + '?' + data
 
-        print "FULL URL: " + fullurl
+        #print "FULL URL: " + fullurl
         response = urllib2.urlopen(fullurl)
         page = response.read()
         print "HTTP Response: "

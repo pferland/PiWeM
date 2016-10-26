@@ -1,10 +1,15 @@
 from PiWeMConfig.PiWeMConfig import PiWeMConfig
 from PiWeM import PiWeM
 
-import sys, time
+import sys, time, argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--daemon", help="Run as a Daemon")
+args = parser.parse_args()
+
 
 PWMConfig = PiWeMConfig()
-settings = PWMConfig.ConfigMap("settings").get("settings") #Open Settings.ini file and read contents
+settings = PWMConfig.ConfigMap("settings").get("settings") #Open settings.ini file and read contents
 
 res_split = settings['resolution'].split(",") #Parse Resolution field and make it into a tuple
 resolution = (int(res_split[0]),int(res_split[1]))
@@ -31,7 +36,7 @@ except ValueError, e:
     print e.message
     sys.exit(1)
 
-while 1: #lets start the main loop!!!!!!!!
+while 1: #lets start the main loop!
     if mon.debug:
         print("i = %d" % mon.loop_int) #What loop number are we at?
 
@@ -39,7 +44,11 @@ while 1: #lets start the main loop!!!!!!!!
         get_data = mon.get_data_trigger()
         mon.update_station_timestamp()
         mon.loop_int = mon.loop_int + 1  #syntax parser says it can be shorter, but screw it, i want to know what its doing and its only what ~100k of text or am i too drunk to math?
-        time.sleep(mon.sleep_time) #int(settings['sleep_time']))
+
+        if args.daemon is not None:
+            time.sleep(mon.sleep_time) #int(settings['sleep_time']))
+        else:
+            sys.exit(0)
 
     except IOError, e: # If Sensor Data return is a Failure, do not increment, and try again.
         print e.args
@@ -48,12 +57,17 @@ while 1: #lets start the main loop!!!!!!!!
         print e.message
         print e.strerror
         print 'IOError, usually is that you have not set either the barometer (bcm085) or PCF8591 address correctly, or you were messing with the cables whole the daemon was running, or the hardware has failed. or something went wrong with the I2C bus... I mean come on....'
-        time.sleep(mon.sleep_time) # error sleep, it could just be that the humidity sensor or something didnt reset in time. which the dht11 is really bad at...
+        if args.daemon is not None:
+            time.sleep(mon.sleep_time) #int(settings['sleep_time']))
+        else:
+            sys.exit(0)
+
     except KeyboardInterrupt, e:
         if mon.camera_enabled:
             mon.camera.close()
         print "Keyboard Interrupt detected, daemon/script closing."
         sys.exit(0)
+        
     except ValueError, e:
         print e.args
         print e.errno
