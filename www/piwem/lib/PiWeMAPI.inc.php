@@ -77,31 +77,31 @@ class PiWeMAPI
                         switch($subkey)
                         {
                             case "bmp085":
-                                print $this->import_BMP085($value);
+                                print $this->import_BMP085($sensor);
                                 break;
                             case "bmp180":
-                                print $this->import_BMP180($value);
+                                print $this->import_BMP180($sensor);
                                 break;
                             case "bmp280":
-                                print $this->import_BMP280($value);
+                                print $this->import_BMP280($sensor);
                                 break;
                             case "dht11":
-                                print $this->import_DHT11($value);
+                                print $this->import_DHT11($sensor);
                                 break;
                             case "dht22":
-                                print $this->import_DHT22($value);
+                                print $this->import_DHT22($sensor);
                                 break;
                             case "am2302":
-                                print $this->import_AM2302($value);
+                                print $this->import_AM2302($sensor);
                                 break;
                             case "ats":
-                                print $this->import_ATS($value);
+                                print $this->import_ATS($sensor);
                                 break;
                             case "photoresistor":
-                                print $this->import_photoresistor($value);
+                                print $this->import_photoresistor($sensor);
                                 break;
                             case "therm":
-                                print $this->import_thermistor($value);
+                                print $this->import_thermistor($sensor);
                                 break;
                         }
                         print "------------------------------------<br>\r\n";
@@ -157,6 +157,8 @@ class PiWeMAPI
     {
         if(empty($data))
         {return 0;}
+        var_dump("------------------------------------------------\r\n------------------------\r\n--------------------------------------------");
+        var_dump($data);
         $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`bmp280` (pressure, c_temp, f_temp, altitude, station_hash, `timestamp`) VALUES (?, ?, ?, ?, ?, ?)");
         $prep->bindParam(1, $data['pressure'], PDO::PARAM_STR);
         $prep->bindParam(2, $data['temp'][0], PDO::PARAM_STR);
@@ -165,6 +167,7 @@ class PiWeMAPI
         $prep->bindParam(5, $this->station_hash, PDO::PARAM_STR);
         $prep->bindParam(6, $this->timestamp, PDO::PARAM_STR);
         $prep->execute();
+        var_dump("------------------------------------------------\r\n------------------------\r\n--------------------------------------------");
         return 1;
     }
 
@@ -242,7 +245,7 @@ class PiWeMAPI
         if(empty($data))
         {return 0;}
         $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`photoresistor` (photolevel, station_hash, `timestamp`) VALUES (?, ?, ?)");
-        $prep->bindParam(1, $data['photoresistor'], PDO::PARAM_STR);
+        $prep->bindParam(1, $data, PDO::PARAM_STR);
         $prep->bindParam(2, $this->station_hash, PDO::PARAM_STR);
         $prep->bindParam(3, $this->timestamp, PDO::PARAM_STR);
         $prep->execute();

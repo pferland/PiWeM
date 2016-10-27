@@ -1,7 +1,7 @@
 <?php
 
 require "../lib/config.php";
-var_dump($WWWconfig);
+#var_dump($WWWconfig);
 
 require "../lib/PiWeMAPI.inc.php";
 
