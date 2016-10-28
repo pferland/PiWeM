@@ -17,6 +17,18 @@ piwem_central_server = http://dev.randomintervals.com
 ;Upload data to the PiWem Central Server Defined above.
 upload_to_central_server = 1
 
+#Upload sensor data to the Weahter Underground PWS API
+upload_to_weather_underground = 1
+
+# URL for the Weahter Underground PWS API
+wu_url = https://weatherstation.wunderground.com/weatherstation/updateweatherstation.php
+
+# Station ID for the Weather Underground PWS API
+wu_station_id = station_id_here
+
+# Station Key for the Weather Underground PWS API
+wu_station_key = station_key_here
+
 ;Store to the local MySQL Server
 localstorage = 0
 

@@ -124,6 +124,13 @@ class PIWEM:
         self.debug = int(settings['debug'])
         self.localstorage = int(settings['localstorage'])
         self.bufferlocally = int(settings['bufferlocally'])
+        self.upload_to_weather_underground = int(settings['upload_to_weather_underground'])
+        self.wu_url = settings['wu_url']
+        self.wu_station_id = settings['wu_station_id']
+        self.wu_station_key = settings['wu_station_key']
+        self.temp_flag = settings['temp_flag']
+        self.pressure_flag = settings['pressure_flag']
+        self.humidity_flag = settings['humidity_flag']
 
         # Check for and/or generate station hash and write it to a file.
         if not os.path.isfile("station_hash.txt"):
@@ -548,35 +555,44 @@ class PIWEM:
 
     def get_sensor_data(self):  # Gather all of the sensors data
 
-        bmp085_data = self.get_bmp085_data()
-        self.sensor_values.bmp085.temp = bmp085_data[0]
-        self.sensor_values.bmp085.pressure = bmp085_data[1]
-        self.sensor_values.bmp085.altitude = bmp085_data[2]
+        if self.bmp085_enabled:
+            bmp085_data = self.get_bmp085_data()
+            self.sensor_values.bmp085.temp = bmp085_data[0]
+            self.sensor_values.bmp085.pressure = bmp085_data[1]
+            self.sensor_values.bmp085.altitude = bmp085_data[2]
 
-#        Future use, when I get the parts.
-#        bmp180_data = self.get_bmp180_data()
-#        self.sensor_values.bmp180.temp = bmp180_data[0]
-#        self.sensor_values.bmp180.pressure = bmp180_data[1]
+        if self.bmp180_enabled:
+            #Future use, when I get the parts.
+            bmp180_data = self.get_bmp180_data()
+            self.sensor_values.bmp180.temp = bmp180_data[0]
+            self.sensor_values.bmp180.pressure = bmp180_data[1]
 
-        bmp280_data = self.get_bmp280_data()
-        self.sensor_values.bmp280.temp = bmp280_data[0]
-        self.sensor_values.bmp280.pressure = bmp280_data[1]
-        self.sensor_values.bmp280.altitude = bmp280_data[2]
+        if self.bmp280_enabled:
+            bmp280_data = self.get_bmp280_data()
+            self.sensor_values.bmp280.temp = bmp280_data[0]
+            self.sensor_values.bmp280.pressure = bmp280_data[1]
+            self.sensor_values.bmp280.altitude = bmp280_data[2]
 
-        self.sensor_values.thermistor = self.get_thermistor_temp_data()
+        if self.thermistor_enabled:
+            self.sensor_values.thermistor = self.get_thermistor_temp_data()
 
-        self.sensor_values.analog_temp_sensor = self.get_ats_temp_data()
+        if self.analog_temp_sensor_enabled:
+            self.sensor_values.analog_temp_sensor = self.get_ats_temp_data()
 
-        dht11_data = self.get_dht11_data()
-        self.sensor_values.dht11.temp = dht11_data[0]
-        self.sensor_values.dht11.humidity = dht11_data[1]
+        if self.dht11_enabled:
+            dht11_data = self.get_dht11_data()
+            self.sensor_values.dht11.temp = dht11_data[0]
+            self.sensor_values.dht11.humidity = dht11_data[1]
 
-        # Future Use, when I get the parts.
-#        dht22_data = self.get_dht22_data()
-#        self.sensor_values.dht22.temp = dht22_data[0]
-#        self.sensor_values.dht22.humidity = dht22_data[1]
+        if self.dht22_enabled:
+             #Future Use, when I get the parts.
+             dht22_data = self.get_dht22_data()
+             self.sensor_values.dht22.temp = dht22_data[0]
+             self.sensor_values.dht22.humidity = dht22_data[1]
 
-        self.sensor_values.photoresistor = self.get_photolevel_data()
+        if self.photoresistor_enabled:
+            self.sensor_values.photoresistor = self.get_photolevel_data()
+
         return 0
 
 
@@ -639,6 +655,9 @@ class PIWEM:
                     self.set_buffered_data(0)
                     if not self.localstorage:
                         self.clear_buffer_data()
+
+        if self.upload_to_weather_underground:
+            self.weatherunderground()
 
         self.sensor_values.fetch_error = 0
 
@@ -1068,3 +1087,66 @@ class PIWEM:
         return self.conn.fetchall()
 
 
+    def weatherunderground(self):
+        ts = time.time()
+        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+
+        if self.temp_flag == "bmp085":
+            tempf = self.sensor_values.bmp085.temp[1]
+        elif self.temp_flag == "bmp180":
+            tempf = self.sensor_values.bmp180.temp[1]
+        elif self.temp_flag == "bmp280":
+            tempf = self.sensor_values.bmp280.temp[1]
+        elif self.temp_flag == "am2302":
+            tempf = self.sensor_values.am2302.temp[1]
+        elif self.temp_flag == "dht11":
+            tempf = self.sensor_values.dht11.temp[1]
+        elif self.temp_flag == "dht22":
+            tempf = self.sensor_values.dht22.temp[1]
+        elif self.temp_flag == "ats":
+            tempf = self.sensor_values.analog_temp_sensor[1]
+        elif self.temp_flag == "therm":
+            tempf = self.sensor_values.thermistor[1]
+
+        if self.humidity_flag == "dht11":
+            humidity_insert = self.sensor_values.dht11.humidity
+        elif self.humidity_flag == "dht22":
+            humidity_insert = self.sensor_values.dht22.humidity
+        elif self.humidity_flag == "am2302":
+            humidity_insert = self.sensor_values.am2302.humidity
+
+        print self.pressure_flag
+        if self.pressure_flag == "bmp085":
+            print self.sensor_values.bmp085.pressure
+            pressure_inch = (0.0002952998751 * self.sensor_values.bmp085.pressure)
+        elif self.pressure_flag == "bmp180":
+            pressure_inch = (0.0002952998751 * self.sensor_values.bmp180.pressure)
+        elif self.pressure_flag == "bmp280":
+            pressure_inch = (0.0002952998751 * self.sensor_values.bmp280.pressure)
+
+        values = {
+            'ID': self.wu_station_id,
+            'PASSWORD': self.wu_station_key,
+            'dateutc': timestamp,
+            'softwaretype': 'RaspberryPi Weather Monitor (PiWeM)',
+            'action': 'updateraw',
+            'humidity': humidity_insert,
+            'baromin': pressure_inch,
+            'tempf': tempf,
+            'realtime': 1,
+            'rtfreq': 3
+        }
+        data = urllib.urlencode(values)
+        fullurl = self.wu_url + '?' + data
+        print "FULL URL: " + fullurl
+
+        try:
+            response = urllib2.urlopen(fullurl)
+            page = response.read()
+            if self.debug is not 1:
+                print "HTTP Response: "
+                print page
+            return response.getcode()
+        except urllib2.URLError, e:
+            print e.reason, e.message, e.args
+            return -1
