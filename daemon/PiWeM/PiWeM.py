@@ -892,14 +892,23 @@ class PIWEM:
         values = {'payload' : json_data, 'station_hash': self.station_hash, 'station_key': self.station_key, 'mode': 'importdata'}
         data = urllib.urlencode(values)
         fullurl = url + '?' + data
-        #print "FULL URL: " + fullurl
+        if self.debug:
+            pprint(data)
+            print "FULL URL: " + fullurl
         try:
             response = urllib2.urlopen(fullurl)
             page = response.read()
             if self.debug:
                 print "HTTP Response: "
                 print page
-            return response.getcode()
+            if response.getcode() == 200:
+                if self.verbose:
+                    print "Success!"
+                return 1
+            else:
+                if self.verbose:
+                    print "Error! " + str(response.getcode())
+                return 0
         except urllib2.URLError, e:
             print e.reason, e.message, e.args
             return -1
@@ -1136,17 +1145,28 @@ class PIWEM:
             'realtime': 1,
             'rtfreq': 3
         }
+
+
         data = urllib.urlencode(values)
         fullurl = self.wu_url + '?' + data
-        print "FULL URL: " + fullurl
+        if self.debug:
+            pprint(data)
+            print "FULL URL: " + fullurl
 
         try:
             response = urllib2.urlopen(fullurl)
             page = response.read()
-            if self.debug is not 1:
+            if self.debug:
                 print "HTTP Response: "
                 print page
-            return response.getcode()
+            if response.getcode() == 200:
+                if self.verbose:
+                    print "Success!"
+                return 1
+            else:
+                if self.verbose:
+                    print "Error! " + str(response.getcode())
+                return 0
         except urllib2.URLError, e:
             print e.reason, e.message, e.args
             return -1
