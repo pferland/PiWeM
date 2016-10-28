@@ -1,5 +1,5 @@
 class bmp180_data(object):
-    temp         = []
-    pressure     = 0
-    altitude     = 0
-
+    def __init__(self):
+        self.temp         = []
+        self.pressure     = 0
+        self.altitude     = 0

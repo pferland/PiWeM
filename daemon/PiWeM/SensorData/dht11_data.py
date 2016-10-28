@@ -1,3 +1,4 @@
 class dht11_data(object):
-    temp          = []
-    humidity      = 0
+    def __init__(self):
+        self.temp          = []
+        self.humidity      = 0
