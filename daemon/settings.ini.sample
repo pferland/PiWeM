@@ -11,9 +11,17 @@ sql_user = root
 ;SQL User Password
 sql_password = toor
 
-PiWem_Central_Server = http://dev.randomintervals.com
+;Location of the Central PiWem Server.
+piwem_central_server = http://dev.randomintervals.com
 
-Upload_To_Central_Server = 1
+;Upload data to the PiWem Central Server Defined above.
+upload_to_central_server = 1
+
+;Store to the local MySQL Server
+localstorage = 0
+
+;Buffer Data to local MySQL while Central PiWem Server is not available?
+bufferlocally = 1
 
 ;How long til the next run of the loop to get data
 sleep_time = 3600

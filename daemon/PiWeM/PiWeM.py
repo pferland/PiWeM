@@ -4,7 +4,7 @@ import Adafruit_BMP.BMP085 as BMP085
 import RPi.GPIO as GPIO
 import MySQLdb
 import Payload
-import bmp280
+import bmp280 as bmp280_sn
 import datetime
 import json
 import math
@@ -38,6 +38,9 @@ class PIWEM:
     json_data       = ""
     PiWem_Central_Server = ""
     Upload_To_Central_Server = 0
+    localstorage    = 0
+    bufferlocally   = 0
+    buffered_data   = 0
 
     #Where you want the weather data to be logged to. so far just supports CSV and TSV Well not really, but it will be
     sql_log_data    = 1
@@ -119,6 +122,8 @@ class PIWEM:
         self.set_sensor_flags(settings)
         self.verbose = int(settings['verbose'])
         self.debug = int(settings['debug'])
+        self.localstorage = int(settings['localstorage'])
+        self.bufferlocally = int(settings['bufferlocally'])
 
         # Check for and/or generate station hash and write it to a file.
         if not os.path.isfile("station_hash.txt"):
@@ -265,7 +270,7 @@ class PIWEM:
     def setup_bmp280(self, address = 0x76):
         if self.bmp280_enabled:
             self.bmp280_address = address
-            self.bmp280_instance = bmp280.bmp280(address=self.bmp280_address) #Temp filler, till i get the hardware and can actually use it.
+            self.bmp280_instance = bmp280_sn.bmp280(address=self.bmp280_address) #Temp filler, till i get the hardware and can actually use it.
             return 0
 
 
@@ -306,7 +311,7 @@ class PIWEM:
             return 0
 
 
-    def insert_data(self):
+    def insert_data(self, buffered = 0):
         ts = time.time()
         timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
         if self.debug:
@@ -350,9 +355,9 @@ class PIWEM:
         if self.bmp085_enabled:
             if self.debug:
                 print "bmp085_enabled"
-            self.conn.executemany("INSERT INTO weather_data.bmp085 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
+            self.conn.executemany("INSERT INTO weather_data.bmp085 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.bmp085.pressure, self.sensor_values.bmp085.temp[0], self.sensor_values.bmp085.temp[1], self.sensor_values.bmp085.altitude, self.station_hash, timestamp),
+            (self.sensor_values.bmp085.pressure, self.sensor_values.bmp085.temp[0], self.sensor_values.bmp085.temp[1], self.sensor_values.bmp085.altitude, self.station_hash, timestamp, buffered),
             ])
             self.db.commit()
 
@@ -360,9 +365,9 @@ class PIWEM:
         if self.bmp180_enabled:
             if self.debug:
                 print "bmp180_enabled"
-            self.conn.executemany("INSERT INTO weather_data.bmp180 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
+            self.conn.executemany("INSERT INTO weather_data.bmp180 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.bmp180.pressure, self.sensor_values.bmp180.temp[0], self.sensor_values.bmp180.temp[1], self.sensor_values.bmp180.altitude, self.station_hash, timestamp),
+            (self.sensor_values.bmp180.pressure, self.sensor_values.bmp180.temp[0], self.sensor_values.bmp180.temp[1], self.sensor_values.bmp180.altitude, self.station_hash, timestamp, buffered),
             ])
             self.db.commit()
 
@@ -372,9 +377,9 @@ class PIWEM:
                 print "bmp280_enabled"
                 print self.sensor_values.bmp280.pressure
                 print self.sensor_values.bmp280.temp
-            self.conn.executemany("INSERT INTO weather_data.bmp280 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
+            self.conn.executemany("INSERT INTO weather_data.bmp280 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.bmp280.pressure, self.sensor_values.bmp280.temp[0], self.sensor_values.bmp280.temp[1], self.sensor_values.bmp280.altitude, self.station_hash, timestamp),
+            (self.sensor_values.bmp280.pressure, self.sensor_values.bmp280.temp[0], self.sensor_values.bmp280.temp[1], self.sensor_values.bmp280.altitude, self.station_hash, timestamp, buffered),
             ])
             self.db.commit()
 
@@ -382,9 +387,9 @@ class PIWEM:
         if self.dht11_enabled:
             if self.debug:
                 print "dht11_enabled"
-            self.conn.executemany("INSERT INTO weather_data.dht11 ( c_temp, f_temp, humidity, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s) ",
+            self.conn.executemany("INSERT INTO weather_data.dht11 ( c_temp, f_temp, humidity, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.dht11.temp[0], self.sensor_values.dht11.temp[1], self.sensor_values.dht11.humidity, self.station_hash, timestamp),
+            (self.sensor_values.dht11.temp[0], self.sensor_values.dht11.temp[1], self.sensor_values.dht11.humidity, self.station_hash, timestamp, buffered),
             ])
             self.db.commit()
 
@@ -392,9 +397,9 @@ class PIWEM:
         if self.dht22_enabled:
             if self.debug:
                 print "dht22_enabled"
-            self.conn.executemany("INSERT INTO weather_data.dht22 ( c_temp, f_temp, humidity, station_hash, `timestamp` ) VALUES ( %s, %s, %s, %s, %s) ",
+            self.conn.executemany("INSERT INTO weather_data.dht22 ( c_temp, f_temp, humidity, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.dht22.temp[0], self.sensor_values.dht22.temp[1], self.sensor_values.dht22.humidity, self.station_hash, timestamp),
+            (self.sensor_values.dht22.temp[0], self.sensor_values.dht22.temp[1], self.sensor_values.dht22.humidity, self.station_hash, timestamp, buffered),
             ])
             self.db.commit()
 
@@ -402,9 +407,9 @@ class PIWEM:
         if self.thermistor_enabled:
             if self.debug:
                 print "thermistor_enabled"
-            self.conn.executemany("INSERT INTO weather_data.thermistor ( c_temp, f_temp, station_hash, `timestamp` ) VALUES (%s, %s, %s, %s) ",
+            self.conn.executemany("INSERT INTO weather_data.thermistor ( c_temp, f_temp, station_hash, `timestamp`, `buffered_data` ) VALUES (%s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.thermistor[0], self.sensor_values.thermistor[1], self.station_hash, timestamp),
+            (self.sensor_values.thermistor[0], self.sensor_values.thermistor[1], self.station_hash, timestamp, buffered),
             ])
             self.db.commit()
 
@@ -412,9 +417,9 @@ class PIWEM:
         if self.analog_temp_sensor_enabled:
             if self.debug:
                 print "analog_temp_sensor_enabled"
-            self.conn.executemany("INSERT INTO weather_data.analog_temp_sensor ( c_temp, f_temp, station_hash, `timestamp` ) VALUES (%s, %s, %s, %s) ",
+            self.conn.executemany("INSERT INTO weather_data.analog_temp_sensor ( c_temp, f_temp, station_hash, `timestamp`, `buffered_data` ) VALUES (%s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.analog_temp_sensor[0], self.sensor_values.analog_temp_sensor[1], self.station_hash, timestamp),
+            (self.sensor_values.analog_temp_sensor[0], self.sensor_values.analog_temp_sensor[1], self.station_hash, timestamp, buffered),
             ])
             self.db.commit()
 
@@ -422,9 +427,9 @@ class PIWEM:
         if self.photoresistor_enabled:
             if self.debug:
                 print "photoresistor_enabled"
-            self.conn.executemany("INSERT INTO weather_data.photoresistor ( `photolevel`, `station_hash`, `timestamp` ) VALUES ( %s, %s, %s) ",
+            self.conn.executemany("INSERT INTO weather_data.photoresistor ( `photolevel`, `station_hash`, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s) ",
             [
-            (self.sensor_values.photoresistor, self.station_hash, timestamp),
+            (self.sensor_values.photoresistor, self.station_hash, timestamp, buffered),
             ])
             self.db.commit()
         return 0
@@ -592,6 +597,13 @@ class PIWEM:
         return image_name
 
 
+    def check_for_buffered_data(self):
+        self.conn.executemany("SELECT buffered_data FROM `weather_data`.`Stations` WHERE `station_hash` = %s", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        data = self.conn.fetchall()
+        return data[0][0]
+
+
     def get_data_trigger(self):  #Main loop trigger and handler for the daemon
         if self.camera_enabled:
             image = self.take_picture()
@@ -603,11 +615,30 @@ class PIWEM:
         self.get_sensor_data()
 
 #        if not self.sensor_values.fetch_error:
-        self.insert_data()
+        if self.localstorage:
+            self.insert_data()
 
         if self.Upload_To_Central_Server:
-            print "Upload data to the Central Server."
-            self.upload_data()
+            if self.verbose:
+                print "Upload data to the Central Server."
+            ret = self.upload_data()
+            if ret is -1:
+                if self.bufferlocally:
+                    if self.verbose:
+                        print "Failed upload to " + self.PiWem_Central_Server + " Buffering data locally for now."
+                    self.set_buffered_data(1)
+                    self.insert_data(1)
+            else:
+                if self.verbose:
+                    print "Upload Successful!"
+
+                if self.check_for_buffered_data():
+                    if self.verbose:
+                       print "Data buffered locally, uploading it to the central server since it is back online."
+                    self.upload_buffered_data()
+                    self.set_buffered_data(0)
+                    if not self.localstorage:
+                        self.clear_buffer_data()
 
         self.sensor_values.fetch_error = 0
 
@@ -643,10 +674,14 @@ class PIWEM:
             os.remove(image)
             print( "Saved Image: {0}".format(self.output_path + filename) )
         return 1
- #       else:
- #           self.sensor_values.fetch_error = 0
- #           print("Data return error.")
- #           return 0
+
+
+    def set_buffered_data(self, flag):
+        self.conn.executemany("UPDATE weather_data.Stations SET `buffered_data` = %s WHERE `station_hash` = %s ",
+        [
+            (flag, self.station_hash),
+        ])
+        self.db.commit()
 
 
     def update_station_timestamp(self):
@@ -661,28 +696,207 @@ class PIWEM:
         self.db.commit()
 
 
-    def upload_data(self):
+    def upload_buffered_data(self):
+        buffer = {}
+
+        self.conn.executemany("SELECT dht11, dht22, bmp085, bmp180, bmp280, am2302, analog_temp_sensor, photoresistor, thermistor FROM weather_data.Station_sensors WHERE `station_hash` = %s", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        data = self.conn.fetchall()
+
+        dht11_flag = data[0][0]
+        dht22_flag = data[0][1]
+        bmp085_flag = data[0][2]
+        bmp180_flag = data[0][3]
+        bmp280_flag = data[0][4]
+        am2302_flag = data[0][5]
+        analog_temp_sensor_flag = data[0][6]
+        photoresistor_flag = data[0][7]
+        thermistor_flag = data[0][8]
+
+
+        count = 0
+        if dht11_flag:
+            count = self.count_dht11_buffers()
+        print count
+
+        if dht22_flag or count < 1:
+            count = self.count_dht22_buffers()
+        print count
+
+        if bmp085_flag or count < 1:
+            count = self.count_bmp085_buffers()
+        print count
+
+        if bmp180_flag or count < 1:
+            count = self.count_bmp180_buffers()
+        print count
+
+        if bmp280_flag or count < 1:
+            count = self.count_bmp280_buffers()
+        print count
+
+        if am2302_flag or count < 1:
+            count = self.count_am2302_buffers()
+        print count
+
+        if analog_temp_sensor_flag or count < 1:
+            count = self.count_analog_temp_sensor_buffers()
+        print count
+
+        if photoresistor_flag or count < 1:
+            count = self.count_photoresistor_buffers()
+        print count
+
+        if thermistor_flag or count < 1:
+            count = self.count_thermistor_buffers()
+        print count
+
+
+        if count < 1:
+            if self.verbose:
+                print "Count of buffered rows was 0."
+            return 0
+        if self.debug:
+            print "Count for Buffered Data rows is: " + str(count)
+
+        for n in range(0, count):
+            buffer[n] = SensorValues.SensorValues()
+
+        if self.debug:
+            pprint(buffer)
+
+        if dht11_flag:
+            if self.debug:
+                print "dht11"
+            n = 0
+            for row in self.get_dht11_buffers():
+                buffer[n].dht11.humidity = row[0]
+                buffer[n].dht11.temp.append(row[1])
+                buffer[n].dht11.temp.append(row[2])
+                n = n + 1
+
+
+        if dht22_flag:
+            if self.debug:
+                print "dht22"
+            n = 0
+            for row in self.get_dht22_buffers():
+                buffer[n].dht22.humidity = row[0]
+                buffer[n].dht22.temp.append(row[1])
+                buffer[n].dht22.temp.append(row[2])
+                n = n + 1
+
+        if bmp085_flag:
+            if self.debug:
+                print "bmp085"
+            n = 0
+            for row in self.get_bmp085_buffers():
+                buffer[n].bmp085.pressure = row[0]
+                buffer[n].bmp085.temp.append(row[1])
+                buffer[n].bmp085.temp.append(row[2])
+                buffer[n].bmp085.altitude = row[3]
+                n = n + 1
+
+        if bmp180_flag:
+            if self.debug:
+                print "bmpp180"
+            n = 0
+            for row in self.get_bmp180_buffers():
+                buffer[n].bmp180.pressure = row[0]
+                buffer[n].bmp180.temp.append(row[1])
+                buffer[n].bmp180.temp.append(row[2])
+                buffer[n].bmp180.altitude = row[3]
+                n = n + 1
+
+        if bmp280_flag:
+            if self.debug:
+                print "bmp280"
+            n = 0
+            for row in self.get_bmp280_buffers():
+                buffer[n].bmp280.pressure = row[0]
+                buffer[n].bmp280.temp.append(row[1])
+                buffer[n].bmp280.temp.append(row[2])
+                buffer[n].bmp280.altitude = row[3]
+                n = n + 1
+
+        if am2302_flag:
+            if self.debug:
+                print "am2302"
+            n = 0
+            for row in self.get_am2302_buffers():
+                buffer[n].am2302.humidity = row[0]
+                buffer[n].am2302.temp.append(row[1])
+                buffer[n].am2302.temp.append(row[2])
+                n = n + 1
+
+        if analog_temp_sensor_flag:
+            if self.debug:
+                print "ats"
+            n = 0
+            for row in self.get_analog_temp_sensor_buffers():
+                buffer[n].analog_temp_sensor.append(row[0])
+                buffer[n].analog_temp_sensor.append(row[1])
+                n = n + 1
+
+        if photoresistor_flag:
+            if self.debug:
+                print "photoresistor"
+            n = 0
+            for row in self.get_photoresistor_buffers():
+                buffer[n].photoresistor = row[0]
+
+        if thermistor_flag:
+            if self.debug:
+                print "thermistor"
+            n = 0
+            for row in self.get_thermistor_buffers():
+                buffer[n].thermistor.append(row[0])
+                buffer[n].thermistor.append(row[1])
+
+        for row in buffer:
+            pprint(buffer[row].bmp280.altitude)
+            self.upload_data(buffer[row])
+
+
+    def upload_data(self, buffered_values = None):
+        if buffered_values is not None:
+            if self.verbose:
+                print "Uploading buffered data."
+            self.sensor_values = buffered_values
         self.payload = Payload.PayloadData()
         self.payload.station_name = self.station_name
         self.payload.station_hash = self.station_hash
         ts = time.time()
         self.payload.timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-        self.payload.station_data = self.sensor_values
-
         json_data = self.json_dump()
-
         url = self.PiWem_Central_Server + '/piwem/api/api.php'
-
         values = {'payload' : json_data, 'station_hash': self.station_hash, 'station_key': self.station_key, 'mode': 'importdata'}
-
         data = urllib.urlencode(values)
         fullurl = url + '?' + data
-
         #print "FULL URL: " + fullurl
-        response = urllib2.urlopen(fullurl)
-        page = response.read()
-        print "HTTP Response: "
-        print page
+        try:
+            response = urllib2.urlopen(fullurl)
+            page = response.read()
+            if self.debug:
+                print "HTTP Response: "
+                print page
+            return response.getcode()
+        except urllib2.URLError, e:
+            print e.reason, e.message, e.args
+            return -1
+
+
+    def clear_buffer_data(self):
+        self.conn.executemany("DELETE FROM weather_data.am2302 WHERE `station_hash` = %s AND buffered_data = 1", [(self.station_hash),] )
+        self.conn.executemany("DELETE FROM weather_data.analog_temp_sensor WHERE `station_hash` = %s AND buffered_data = 1", [(self.station_hash),] )
+        self.conn.executemany("DELETE FROM weather_data.dht11 WHERE `station_hash` = %s AND buffered_data = 1", [(self.station_hash),] )
+        self.conn.executemany("DELETE FROM weather_data.dht22 WHERE `station_hash` = %s AND buffered_data = 1", [(self.station_hash),] )
+        self.conn.executemany("DELETE FROM weather_data.bmp085 WHERE `station_hash` = %s AND buffered_data = 1", [(self.station_hash),] )
+        self.conn.executemany("DELETE FROM weather_data.bmp180 WHERE `station_hash` = %s AND buffered_data = 1", [(self.station_hash),] )
+        self.conn.executemany("DELETE FROM weather_data.bmp280 WHERE `station_hash` = %s AND buffered_data = 1", [(self.station_hash),] )
+        self.conn.executemany("DELETE FROM weather_data.photoresistor WHERE `station_hash` = %s AND buffered_data = 1", [(self.station_hash),] )
+        self.conn.executemany("DELETE FROM weather_data.thermistor WHERE `station_hash` = %s AND buffered_data = 1", [(self.station_hash),] )
+        self.db.commit()
 
 
     def json_dump(self):
@@ -744,3 +958,113 @@ class PIWEM:
 
         print "Full Payload Dump";
         return json.dumps(self.payload.__dict__)
+
+
+    def count_bmp085_buffers(self):
+        self.conn.executemany("SELECT pressure, c_temp, f_temp, altitude FROM `weather_data`.`bmp085` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        data = self.conn.fetchall()
+        return len(data)
+
+
+    def count_bmp180_buffers(self):
+        self.conn.executemany("SELECT pressure, c_temp, f_temp, altitude FROM `weather_data`.`bmp180` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        data = self.conn.fetchall()
+        return len(data)
+
+
+    def count_bmp280_buffers(self):
+        self.conn.executemany("SELECT pressure, c_temp, f_temp, altitude FROM `weather_data`.`bmp280` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        data = self.conn.fetchall()
+        return len(data)
+
+
+    def count_dht11_buffers(self):
+        self.conn.executemany("SELECT humidity, c_temp, f_temp FROM `weather_data`.`dht11` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        data = self.conn.fetchall()
+        print len(data)
+        return len(data)
+
+    def count_dht22_buffers(self):
+        self.conn.executemany("SELECT humidity, c_temp, f_temp FROM `weather_data`.`dht22` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        data = self.conn.fetchall()
+        return len(data)
+
+    def count_analog_temp_sensor_buffers(self):
+        self.conn.executemany("SELECT c_temp, f_temp FROM `weather_data`.`analog_temp_sensor` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        data = self.conn.fetchall()
+        return len(data)
+
+    def count_photoresistor_buffers(self):
+        self.conn.executemany("SELECT photolevel FROM `weather_data`.`photoresistor` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        data = self.conn.fetchall()
+        return len(data)
+
+    def count_am2302_buffers(self):
+        self.conn.executemany("SELECT humidity, c_temp, f_temp FROM `weather_data`.`am2302` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        data = self.conn.fetchall()
+        return len(data)
+
+    def count_thermistor_buffers(self):
+        self.conn.executemany("SELECT c_temp, f_temp FROM `weather_data`.`thermistor` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        data = self.conn.fetchall()
+        return len(data)
+
+
+    def get_bmp085_buffers(self):
+        self.conn.executemany("SELECT pressure, c_temp, f_temp, altitude FROM `weather_data`.`bmp085` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        return self.conn.fetchall()
+
+
+    def get_bmp180_buffers(self):
+        self.conn.executemany("SELECT pressure, c_temp, f_temp, altitude FROM `weather_data`.`bmp180` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        return self.conn.fetchall()
+
+
+    def get_bmp280_buffers(self):
+        self.conn.executemany("SELECT pressure, c_temp, f_temp, altitude FROM `weather_data`.`bmp280` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        return self.conn.fetchall()
+
+
+    def get_dht11_buffers(self):
+        self.conn.executemany("SELECT humidity, c_temp, f_temp FROM `weather_data`.`dht11` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        return self.conn.fetchall()
+
+    def get_dht22_buffers(self):
+        self.conn.executemany("SELECT humidity, c_temp, f_temp FROM `weather_data`.`dht22` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        return self.conn.fetchall()
+
+    def get_analog_temp_sensor_buffers(self):
+        self.conn.executemany("SELECT c_temp, f_temp FROM `weather_data`.`analog_temp_sensor` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        return self.conn.fetchall()
+
+    def get_photoresistor_buffers(self):
+        self.conn.executemany("SELECT photolevel FROM `weather_data`.`photoresistor` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        return self.conn.fetchall()
+
+    def get_am2302_buffers(self):
+        self.conn.executemany("SELECT humidity, c_temp, f_temp FROM `weather_data`.`am2302` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        return self.conn.fetchall()
+
+    def get_thermistor_buffers(self):
+        self.conn.executemany("SELECT c_temp, f_temp FROM `weather_data`.`thermistor` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        # fetch all of the rows from the query
+        return self.conn.fetchall()
+
+

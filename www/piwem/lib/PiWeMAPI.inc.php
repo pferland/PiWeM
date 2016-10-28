@@ -219,8 +219,8 @@ class PiWeMAPI
         if(empty($data))
         {return 0;}
         $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`analog_temp_sensor` (c_temp, f_temp, station_hash, `timestamp`) VALUES (?, ?, ?, ?)");
-        $prep->bindParam(1, $data['temp'][0], PDO::PARAM_STR);
-        $prep->bindParam(2, $data['temp'][1], PDO::PARAM_STR);
+        $prep->bindParam(1, $data[0], PDO::PARAM_STR);
+        $prep->bindParam(2, $data[1], PDO::PARAM_STR);
         $prep->bindParam(3, $this->station_hash, PDO::PARAM_STR);
         $prep->bindParam(4, $this->timestamp, PDO::PARAM_STR);
         $prep->execute();
