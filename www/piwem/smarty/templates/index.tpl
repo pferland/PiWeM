@@ -7,6 +7,9 @@
 				<tr class="station_header">
 					<th style="width: 100%" align="center" colspan="2"> <a href="station.php?station_hash={$station.station_hash}">{$station.station_name}</a></th>
 				</tr>
+				<tr class="station_header">
+					<th style="width: 100%" align="center" colspan="2"> {$station.last_update}</th>
+				</tr>
 				{foreach from=$station.sensors key="key" item="sensor"}
 					{if $key eq 'photoresistor'}
 						<tr class="sensor_header">
