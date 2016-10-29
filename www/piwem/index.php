@@ -33,6 +33,7 @@ foreach($stations as $station)
     $Stations_Data_Array[$station['station_hash']] = array();
     $Stations_Data_Array[$station['station_hash']]['station_name'] = $station['station_name'];
     $Stations_Data_Array[$station['station_hash']]['station_hash'] = $station['station_hash'];
+    $Stations_Data_Array[$station['station_hash']]['last_update'] = $station['lastupdate'];
 
     $sensors = $PiWem_Front->GetStationSensors($station['station_hash']);
     $Stations_Data_Array[$station['station_hash']]['sensors'] = array();
