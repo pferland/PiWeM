@@ -57,10 +57,9 @@ while 1: #lets start the main loop!
         print e.message
         print e.strerror
         print 'IOError, usually is that you have not set either the barometer (bcm085) or PCF8591 address correctly, or you were messing with the cables whole the daemon was running, or the hardware has failed. or something went wrong with the I2C bus... I mean come on....'
-        if args.daemon is not None:
-            time.sleep(mon.sleep_time) #int(settings['sleep_time']))
-        else:
-            sys.exit(0)
+        time.sleep(mon.sleep_time)
+        continue
+
 
     except KeyboardInterrupt, e:
         if mon.camera_enabled:
@@ -70,8 +69,6 @@ while 1: #lets start the main loop!
         
     except ValueError, e:
         print e.args
-        print e.errno
-        print e.strerror
-        print e.filename
         print e.message
-        sys.exit(1)
+        time.sleep(mon.sleep_time)
+        continue

@@ -73,7 +73,7 @@ class PiWeMAPI
                 case "station_data":
                     foreach($value as $subkey=>$sensor)
                     {
-                        var_dump($subkey, $sensor);
+                        #var_dump($subkey, $sensor);
                         switch($subkey)
                         {
                             case "bmp085":

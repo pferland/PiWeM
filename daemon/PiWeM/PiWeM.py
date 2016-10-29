@@ -223,8 +223,7 @@ class PIWEM:
 
 
     def insert_station_sensors(self):
-        ts = time.time()
-        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.datetime.utcnow()
 
         if self.debug:
             print "Values to write to sensor tables:"
@@ -250,8 +249,7 @@ class PIWEM:
 
 
     def insert_station(self):
-        ts = time.time()
-        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.datetime.utcnow()
         self.conn.executemany("INSERT INTO weather_data.Stations ( station_hash, station_key, station_name, `timestamp` ) VALUES ( %s, %s, %s, %s) ",
         [
             (self.station_hash, self.station_key, self.station_name, timestamp),
@@ -319,8 +317,7 @@ class PIWEM:
 
 
     def insert_data(self, buffered = 0):
-        ts = time.time()
-        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.datetime.utcnow()
         if self.debug:
             print "--------- Insert Data values for self.sensor_values.*  ------------"
             print ""
@@ -555,49 +552,66 @@ class PIWEM:
 
     def get_sensor_data(self):  # Gather all of the sensors data
 
+        if self.verbose:
+                sys.stdout.write("Polling: ")
         if self.bmp085_enabled:
+            if self.verbose:
+                sys.stdout.write("bmp085")
             bmp085_data = self.get_bmp085_data()
             self.sensor_values.bmp085.temp = bmp085_data[0]
             self.sensor_values.bmp085.pressure = bmp085_data[1]
             self.sensor_values.bmp085.altitude = bmp085_data[2]
 
         if self.bmp180_enabled:
+            if self.verbose:
+                sys.stdout.write(", bmp180")
             #Future use, when I get the parts.
             bmp180_data = self.get_bmp180_data()
             self.sensor_values.bmp180.temp = bmp180_data[0]
             self.sensor_values.bmp180.pressure = bmp180_data[1]
 
         if self.bmp280_enabled:
+            if self.verbose:
+                sys.stdout.write(", bmp280")
             bmp280_data = self.get_bmp280_data()
             self.sensor_values.bmp280.temp = bmp280_data[0]
             self.sensor_values.bmp280.pressure = bmp280_data[1]
             self.sensor_values.bmp280.altitude = bmp280_data[2]
 
         if self.thermistor_enabled:
+            if self.verbose:
+                sys.stdout.write(", Thermistor")
             self.sensor_values.thermistor = self.get_thermistor_temp_data()
 
         if self.analog_temp_sensor_enabled:
+            if self.verbose:
+                sys.stdout.write(", ATS")
             self.sensor_values.analog_temp_sensor = self.get_ats_temp_data()
 
         if self.dht11_enabled:
+            if self.verbose:
+                sys.stdout.write(", dht11")
             dht11_data = self.get_dht11_data()
             self.sensor_values.dht11.temp = dht11_data[0]
             self.sensor_values.dht11.humidity = dht11_data[1]
 
         if self.dht22_enabled:
-             #Future Use, when I get the parts.
-             dht22_data = self.get_dht22_data()
-             self.sensor_values.dht22.temp = dht22_data[0]
-             self.sensor_values.dht22.humidity = dht22_data[1]
+            if self.verbose:
+                sys.stdout.write(", dht22")
+            #Future Use, when I get the parts.
+            dht22_data = self.get_dht22_data()
+            self.sensor_values.dht22.temp = dht22_data[0]
+            self.sensor_values.dht22.humidity = dht22_data[1]
 
         if self.photoresistor_enabled:
+            if self.verbose:
+                sys.stdout.write(", Photoresistor\r\n")
             self.sensor_values.photoresistor = self.get_photolevel_data()
 
         return 0
 
 
     def get_photolevel_data(self):  # Get levels from the Photoresistor
-        print "photoresistor_enabled Value: " + str(self.photoresistor_enabled)
         if self.photoresistor_enabled:
             if self.debug:
                 print "PhotoLevel: " + str(self.pcf8591_instance.read(self.photosresistor_channel))
@@ -622,16 +636,23 @@ class PIWEM:
 
     def get_data_trigger(self):  #Main loop trigger and handler for the daemon
         if self.camera_enabled:
+            if self.verbose:
+                print "Start Picture capture."
             image = self.take_picture()
             img = Image.open( image)
             filename = os.path.basename(image)
             draw = ImageDraw.Draw(img)
             #font = ImageFont.truetype(<font-file>, <font-size>)
             font = ImageFont.truetype(self.text_font, 40)
+
+        if self.verbose:
+            print "Get Sensor Data."
         self.get_sensor_data()
 
 #        if not self.sensor_values.fetch_error:
         if self.localstorage:
+            if self.verbose:
+                print "Save data locally."
             self.insert_data()
 
         if self.Upload_To_Central_Server:
@@ -662,8 +683,7 @@ class PIWEM:
         self.sensor_values.fetch_error = 0
 
         if self.verbose:
-            ts = time.time()
-            timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+            timestamp = datetime.datetime.utcnow()
             print "|-------------------------------------------|"
             print 'TimeStamp:   {0}'.format(timestamp)
             print 'Humidity:    {0}%'.format(self.sensor_values.dht11.humidity)
@@ -692,6 +712,9 @@ class PIWEM:
             img.save(self.output_path + filename, quality=self.jpeg_quality)
             os.remove(image)
             print( "Saved Image: {0}".format(self.output_path + filename) )
+
+        if self.verbose:
+            print "|---------------------------------------------------------------------------|"
         return 1
 
 
@@ -887,7 +910,15 @@ class PIWEM:
         self.payload.station_hash = self.station_hash
         ts = time.time()
         self.payload.timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+
+        if self.debug:
+            pprint(self.payload.timestamp)
+
         json_data = self.json_dump()
+
+        if self.debug:
+            pprint(json_data)
+
         url = self.PiWem_Central_Server + '/piwem/api/api.php'
         values = {'payload' : json_data, 'station_hash': self.station_hash, 'station_key': self.station_key, 'mode': 'importdata'}
         data = urllib.urlencode(values)
@@ -1097,8 +1128,10 @@ class PIWEM:
 
 
     def weatherunderground(self):
-        ts = time.time()
-        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        if self.verbose:
+            print "Starting upload of Weather Underground Data to: " + self.wu_url
+
+        timestamp = datetime.datetime.utcnow()
 
         if self.temp_flag == "bmp085":
             tempf = self.sensor_values.bmp085.temp[1]
@@ -1124,9 +1157,7 @@ class PIWEM:
         elif self.humidity_flag == "am2302":
             humidity_insert = self.sensor_values.am2302.humidity
 
-        print self.pressure_flag
         if self.pressure_flag == "bmp085":
-            print self.sensor_values.bmp085.pressure
             pressure_inch = (0.0002952998751 * self.sensor_values.bmp085.pressure)
         elif self.pressure_flag == "bmp180":
             pressure_inch = (0.0002952998751 * self.sensor_values.bmp180.pressure)
@@ -1142,8 +1173,8 @@ class PIWEM:
             'humidity': humidity_insert,
             'baromin': pressure_inch,
             'tempf': tempf,
-            'realtime': 1,
-            'rtfreq': 3
+            #'realtime': 1,
+            #'rtfreq': 3
         }
 
 
