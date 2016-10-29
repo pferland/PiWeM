@@ -37,7 +37,7 @@ class PiWeMFront
 
     function GetStations()
     {
-        $result = $this->SQL->conn->query("SELECT `station_name`, `station_hash`, `lastupdate` FROM `weather_data`.`Stations` ORDER BY id ASC");
+        $result = $this->SQL->conn->query("SELECT `station_name`, `station_hash` FROM `weather_data`.`Stations` ORDER BY id ASC");
         $fetch = $result->fetchall(2);
         return $fetch;
     }
