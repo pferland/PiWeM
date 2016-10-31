@@ -29,6 +29,10 @@ switch(strtolower(@$_REQUEST['mode']))
 #        $PiWeMAPI->import_picture();
 #        break;
 
+    case "readdata":
+        $PiWeMAPI->read_data();
+        break;
+
     default:
 
         break;

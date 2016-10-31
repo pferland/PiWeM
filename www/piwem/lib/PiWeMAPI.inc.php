@@ -47,6 +47,16 @@ class PiWeMAPI
         }
     }
 
+
+    ##########################
+    ##########################
+    ##########################
+    # Import data API Methods
+    ##########################
+    ##########################
+    ##########################
+
+
     function importdata()
     {
         if(!isset($this->payload) || empty($this->payload))
@@ -252,4 +262,64 @@ class PiWeMAPI
         return 1;
     }
 
+
+
+
+
+    ##########################
+    ##########################
+    ##########################
+    # Read data API Methods
+    ##########################
+    ##########################
+    ##########################
+
+    function read_data()
+    {
+
+        switch(strtolower($_REQUEST['']))
+        {
+            case "dht11":
+                $prep = $this->SQL->conn->prepare("");
+                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
+                break;
+
+            case "dht22";
+
+                break;
+
+            case "bmp085";
+
+                break;
+
+            case "bmp180";
+
+                break;
+
+            case "bmp280";
+
+                break;
+
+            case "am2302";
+
+                break;
+
+            case "photoresistor";
+
+                break;
+
+            case "ats";
+
+                break;
+
+            case "thermistor";
+
+                break;
+
+            case "camera";
+
+                break;
+
+        }
+    }
 }
