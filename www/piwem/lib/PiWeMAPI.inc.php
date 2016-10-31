@@ -276,50 +276,157 @@ class PiWeMAPI
 
     function read_data()
     {
-
-        switch(strtolower($_REQUEST['']))
+        switch(strtolower($_REQUEST['sensor']))
         {
             case "dht11":
-                $prep = $this->SQL->conn->prepare("");
+                if(@$_REQUEST['limit'])
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `humidity`, `c_temp`, `f_temp` FROM weather_data.dht11 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
+                }else
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `humidity`, `c_temp`, `f_temp` FROM weather_data.dht11 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
+                }
                 $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
+                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
+                $prep->execute();
+                $fetch = $prep->fetchAll(2);
+                var_dump($fetch);
                 break;
 
-            case "dht22";
-
+            case "dht22":
+                if(@$_REQUEST['limit'])
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `humidity`, `c_temp`, `f_temp` FROM weather_data.dht22 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
+                }else
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `humidity`, `c_temp`, `f_temp` FROM weather_data.dht22 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
+                }
+                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
+                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
+                $prep->execute();
+                $fetch = $prep->fetchAll(2);
+                var_dump($fetch);
                 break;
 
-            case "bmp085";
-
+            case "bmp085":
+                if(@$_REQUEST['limit'])
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `pressure`, `c_temp`, `f_temp` FROM weather_data.bmp085 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
+                }else
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `pressure`, `c_temp`, `f_temp` FROM weather_data.bmp085 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
+                }
+                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
+                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
+                $prep->execute();
+                $fetch = $prep->fetchAll(2);
+                var_dump($fetch);
                 break;
 
-            case "bmp180";
-
+            case "bmp180":
+                if(@$_REQUEST['limit'])
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `pressure`, `c_temp`, `f_temp` FROM weather_data.bmp180 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
+                }else
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `pressure`, `c_temp`, `f_temp` FROM weather_data.bmp180 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
+                }
+                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
+                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
+                $prep->execute();
+                $fetch = $prep->fetchAll(2);
+                var_dump($fetch);
                 break;
 
-            case "bmp280";
-
+            case "bmp280":
+                if(@$_REQUEST['limit'])
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `pressure`, `c_temp`, `f_temp` FROM weather_data.bmp280 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
+                }else
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `pressure`, `c_temp`, `f_temp` FROM weather_data.bmp280 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
+                }
+                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
+                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
+                $prep->execute();
+                $fetch = $prep->fetchAll(2);
+                var_dump($fetch);
                 break;
 
-            case "am2302";
-
+            case "am2302":
+                if(@$_REQUEST['limit'])
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `humidity`, `c_temp`, `f_temp` FROM weather_data.am2302 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
+                }else
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `humidity`, `c_temp`, `f_temp` FROM weather_data.am2302 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
+                }
+                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
+                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
+                $prep->execute();
+                $fetch = $prep->fetchAll(2);
+                var_dump($fetch);
                 break;
 
-            case "photoresistor";
-
+            case "photoresistor":
+                if(@$_REQUEST['limit'])
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `photolevel` FROM weather_data.photoresistor WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
+                }else
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `photolevel` FROM weather_data.photoresistor WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
+                }
+                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
+                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
+                $prep->execute();
+                $fetch = $prep->fetchAll(2);
+                var_dump($fetch);
                 break;
 
-            case "ats";
-
+            case "ats":
+                if(@$_REQUEST['limit'])
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `c_temp`, `f_temp` FROM weather_data.analog_temp_sensor WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
+                }else
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `c_temp`, `f_temp` FROM weather_data.analog_temp_sensor WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
+                }
+                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
+                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
+                $prep->execute();
+                $fetch = $prep->fetchAll(2);
+                var_dump($fetch);
                 break;
 
-            case "thermistor";
-
+            case "thermistor":
+                if(@$_REQUEST['limit'])
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `c_temp`, `f_temp` FROM weather_data.thermistor WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
+                }else
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `c_temp`, `f_temp` FROM weather_data.thermistor WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
+                }
+                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
+                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
+                $prep->execute();
+                $fetch = $prep->fetchAll(2);
+                var_dump($fetch);
                 break;
 
-            case "camera";
-
+            case "camera":
+                if(@$_REQUEST['limit'])
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `file` FROM weather_data.camera WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
+                }else
+                {
+                    $prep = $this->SQL->conn->prepare("SELECT `file` FROM weather_data.camera WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
+                }
+                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
+                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
+                $prep->execute();
+                $fetch = $prep->fetchAll(2);
+                var_dump($fetch);
                 break;
-
         }
     }
 }
