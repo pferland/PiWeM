@@ -15,53 +15,94 @@ sql_password = toor
 piwem_central_server = http://dev.randomintervals.com
 
 ;Upload data to the PiWem Central Server Defined above.
-upload_to_central_server = 1
+upload_to_central_server = 0
 
 #Upload sensor data to the Weahter Underground PWS API
-upload_to_weather_underground = 1
+upload_to_weather_underground = 0
 
 # URL for the Weahter Underground PWS API
 wu_url = https://weatherstation.wunderground.com/weatherstation/updateweatherstation.php
 
 # Station ID for the Weather Underground PWS API
-wu_station_id = station_id_here
+wu_station_id = Station_ID
 
 # Station Key for the Weather Underground PWS API
-wu_station_key = station_key_here
+wu_station_key = Station_PWD
 
 ;Store to the local MySQL Server
-localstorage = 0
+localstorage = 1
 
 ;Buffer Data to local MySQL while Central PiWem Server is not available?
-bufferlocally = 1
+bufferlocally = 0
 
-;How long til the next run of the loop to get data
+;How long til the next run of the loop to get data if running in daemon mode
 sleep_time = 3600
 
 ;Enable or disables devices completely (well minus power, just to PiWeM)
+
+;8-bit 4 channel Analog to Digital converter that uses I2C
 pcf8591_enabled = 0
+
+; Lowest of the BMP barometers (pressure is int only, temp is accurate to 2C, altitude is jittery)
 bmp085_enabled = 0
+
+; Mid Range BMP barometer (don't have one yet)
 bmp180_enabled = 0
+
+; Highest quality of the BMP barometers (pressure is a float (6,4), temp accurate to 1C, altitude is more consistent)
 bmp280_enabled = 0
-dht11_enabled = 1
+
+; Low quality DHT Humidity and Temp sensor. (humidity seems to be off quite a bit)
+dht11_enabled = 0
+
+; Higher quality of the DHT sensors (don't have one yet)
 dht22_enabled = 0
+
+; AM2302 is supposed to be equivalent to the DHT22, have one, but cannot figure out how to read from it :/ )
+am2302_enabled = 0
+
+; An analog temperature sensor using a resistor (connects to the PCF8591 ADC)
 thermistor_enabled = 0
+
+; Uses an LM393 and a thermistor to tell the temperature (connects to the PCF8591 ADC)
 analog_temp_sensor_enabled = 0
+
+; A resistor that detects light levels (connects to the PCF8591 ADC)
 photoresistor_enabled = 0
+
+; The Raspberry Pi Camera module
 camera_enabled = 0
 
-;GPIO Pin Number for the DHT11 Temperature & Humidity Sensor
-dht11_pin = 23
+; Right now I am trying to use the SwitchDoc Labs WeatherRack - Anemometer & Wind Vane.
+; They are just simple circuits that are connected to step motors it seems, should be as simple as connecting them to the PCF8591
+analog_anemometer_enabled = 0
+analog_anemometer_channel = 3
+analog_wind_vane_enabled = 0
+analog_wind_vane_channel = 1
 
-;GPIO Pin Number for the DHT22 Temperature & Humidity Sensor
+; GPIO Pin Number for the DHT11 Temperature & Humidity Sensor
+dht11_pin = 4
+
+; GPIO Pin Number for the DHT22 Temperature & Humidity Sensor
 dht22_pin = 24
 
-#Photoresistor pin on the PCF8591
+; am2302 pin
+am2302_pin = 22
+
+; Photoresistor pin on the PCF8591
 photoresistor_channel = 0
 
-; Device to use to get the temperature
+; Device that gets used for the Weather Underground Temperature reading
 ; ats (analog temp sensor), ds18b20, therm, bmp085, bmp180, bmp280
-temp_flag = "bmp085"
+temp_flag = bmp280
+
+; Device that gets used for the Weather Underground Barometer reading.
+; bmp085, bmp180, bmp280
+pressure_flag = bmp280
+
+; Device that gets used for the Weather Underground Humidity reading.
+; dht11, dht22, am2302
+humidity_flag = dht11
 
 ;I2C address in hex for the PCF8591
 pcf8591_address = 0x48
@@ -72,16 +113,18 @@ bmp085_address = 0x77
 ;I2C address in hex for the BMP180
 bmp180_address = 0x77
 
-;I2C address in hex for the BMP280
-bmp280_address = 0x77
+; I2C address in hex for the BMP280 
+; Defaulted to 0x76 so you can have the choice to run two sensors at once, 
+; if only using the 280, apply ground to the SDO pin
+bmp280_address = 0x76
 
 ; Thermistor channel on the PCF8591
 thermistor_channel = 2
 
-;Digital Termperature Sensor DS18b20 GPIO pin
+; Digital Termperature Sensor DS18b20 GPIO pin
 ds18b20_pin = 22
 
-;Analog Temperature Sensor channel on the PCF8591
+; Analog Temperature Sensor channel on the PCF8591
 ats_channel = 1
 
 ;Brightness to set the Camera to

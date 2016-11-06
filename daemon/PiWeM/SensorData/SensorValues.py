@@ -17,5 +17,5 @@ class SensorValues(object):
         self.thermistor          = []
         self.analog_temp_sensor  = []
         self.photoresistor       = 0
-
+        self.timestsamp          = ""
         self.fetch_error         = []

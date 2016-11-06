@@ -43,15 +43,15 @@ class PIWEM:
     buffered_data   = 0
 
     #Where you want the weather data to be logged to. so far just supports CSV and TSV Well not really, but it will be
-    sql_log_data    = 1
+    sql_log_data    = 0
     file_log        = 0
     file_log_type   = 'csv' # supports csv or tsv (comma or tab)
 
     # write values to the console
-    verbose     = 1
+    verbose     = 0
 
     #used to get much more data about what is happening, really only needed if you are fucking around with the code. Might get some nifty information ;-)
-    debug       = 1
+    debug       = 0
 
     #Enable or disables devices.
     pcf8591_enabled             = 0
@@ -65,6 +65,9 @@ class PIWEM:
     analog_temp_sensor_enabled  = 0
     photoresistor_enabled       = 0
     camera_enabled              = 0
+    analog_anemometer_enabled   = 0
+    analog_wind_vane_enabled    = 0
+
 
     # GPIO Pins for devices
     dht11_pin   = 0
@@ -119,7 +122,6 @@ class PIWEM:
         self.station_name = socket.gethostname()
         self.db = MySQLdb.connect(host=settings['sql_host'], user=settings['sql_user'], passwd=settings['sql_password'])
         self.conn = self.db.cursor()
-        self.set_sensor_flags(settings)
         self.verbose = int(settings['verbose'])
         self.debug = int(settings['debug'])
         self.localstorage = int(settings['localstorage'])
@@ -131,6 +133,19 @@ class PIWEM:
         self.temp_flag = settings['temp_flag']
         self.pressure_flag = settings['pressure_flag']
         self.humidity_flag = settings['humidity_flag']
+        self.camera_enabled = int(settings['camera_enabled'])
+        self.bmp085_enabled = int(settings['bmp085_enabled'])
+        self.bmp180_enabled = int(settings['bmp180_enabled'])
+        self.bmp280_enabled = int(settings['bmp280_enabled'])
+        self.dht11_enabled = int(settings['dht11_enabled'])
+        self.dht22_enabled = int(settings['dht22_enabled'])
+        self.am2302_enabled = int(settings['am2302_enabled'])
+        self.pcf8591_enabled = int(settings['pcf8591_enabled'])
+        self.thermistor_enabled = int(settings['thermistor_enabled'])
+        self.analog_temp_sensor_enabled = int(settings['analog_temp_sensor_enabled'])
+        self.photoresistor_enabled = int(settings['photoresistor_enabled'])
+        self.analog_anemometer_enabled = int(settings['analog_anemometer_enabled'])
+        self.analog_wind_vane_enabled = int(settings['analog_wind_vane_enabled'])
 
         # Check for and/or generate station hash and write it to a file.
         if not os.path.isfile("station_hash.txt"):
@@ -194,21 +209,6 @@ class PIWEM:
         self.update_station_sensors()
 
 
-    def set_sensor_flags(self, settings=[]):
-        self.camera_enabled = int(settings['camera_enabled'])
-        self.bmp085_enabled = int(settings['bmp085_enabled'])
-        self.bmp180_enabled = int(settings['bmp180_enabled'])
-        self.bmp280_enabled = int(settings['bmp280_enabled'])
-        self.dht11_enabled = int(settings['dht11_enabled'])
-        self.dht22_enabled = int(settings['dht22_enabled'])
-        self.am2302_enabled = int(settings['am2302_enabled'])
-        self.pcf8591_enabled = int(settings['pcf8591_enabled'])
-        self.thermistor_enabled = int(settings['thermistor_enabled'])
-        self.analog_temp_sensor_enabled = int(settings['analog_temp_sensor_enabled'])
-        self.photoresistor_enabled = int(settings['photoresistor_enabled'])
-        return 0
-
-
     def setup_sensors(self):
         self.setup_dht11( pin=int(self.dht11_pin) )
         self.setup_dht22( pin=int(self.dht22_pin) )
@@ -223,7 +223,7 @@ class PIWEM:
 
 
     def insert_station_sensors(self):
-        timestamp = datetime.datetime.utcnow()
+        timestamp = str(datetime.datetime.utcnow())
 
         if self.debug:
             print "Values to write to sensor tables:"
@@ -249,7 +249,7 @@ class PIWEM:
 
 
     def insert_station(self):
-        timestamp = datetime.datetime.utcnow()
+        timestamp = str(datetime.datetime.utcnow())
         self.conn.executemany("INSERT INTO weather_data.Stations ( station_hash, station_key, station_name, `timestamp` ) VALUES ( %s, %s, %s, %s) ",
         [
             (self.station_hash, self.station_key, self.station_name, timestamp),
@@ -317,7 +317,7 @@ class PIWEM:
 
 
     def insert_data(self, buffered = 0):
-        timestamp = datetime.datetime.utcnow()
+        timestamp = str(datetime.datetime.utcnow())
         if self.debug:
             print "--------- Insert Data values for self.sensor_values.*  ------------"
             print ""
@@ -439,6 +439,11 @@ class PIWEM:
         return 0
 
 
+    def get_cpu_temperature(self):
+        res = os.popen('vcgencmd measure_temp').readline()
+        return(res.replace("temp=","").replace("'C\n",""))
+
+
     def get_am2302_data(self):
         if self.am2302_enabled:
             result = self.am2302_instance.read()
@@ -554,6 +559,9 @@ class PIWEM:
 
         if self.verbose:
                 sys.stdout.write("Polling: ")
+
+        self.sensor_values.timestamp = str(datetime.datetime.utcnow())
+
         if self.bmp085_enabled:
             if self.verbose:
                 sys.stdout.write("bmp085")
@@ -683,9 +691,10 @@ class PIWEM:
         self.sensor_values.fetch_error = 0
 
         if self.verbose:
-            timestamp = datetime.datetime.utcnow()
+            timestamp = str(datetime.datetime.utcnow())
             print "|-------------------------------------------|"
             print 'TimeStamp:   {0}'.format(timestamp)
+            print 'CPU Temp:    {0:0.2f} C \ {1:0.2f} F'.format(float(self.get_cpu_temperature()), float( ( float(self.get_cpu_temperature()) * 1.8 ) +32) )
             print 'Humidity:    {0}%'.format(self.sensor_values.dht11.humidity)
             print 'Temperature = {0:0.2f} C'.format(self.sensor_values.dht11.temp[0])             # Print temperature in C
             print 'Temperature = {0:0.2f} F'.format(self.sensor_values.dht11.temp[1])             # Print temperature in F
@@ -727,8 +736,7 @@ class PIWEM:
 
 
     def update_station_timestamp(self):
-        ts = time.time()
-        timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = str(datetime.datetime.utcnow())
         if self.debug:
             print "Update Station Timestamp "+timestamp+" : Station_Hash: " + self.station_hash
         self.conn.executemany("UPDATE weather_data.Stations SET `lastupdate` = %s WHERE station_hash = %s",
@@ -813,6 +821,7 @@ class PIWEM:
             n = 0
             for row in self.get_dht11_buffers():
                 buffer[n].dht11.humidity = row[0]
+                buffer[n].timestamp = row[3]
                 buffer[n].dht11.temp.append(row[1])
                 buffer[n].dht11.temp.append(row[2])
                 n = n + 1
@@ -908,8 +917,7 @@ class PIWEM:
         self.payload = Payload.PayloadData()
         self.payload.station_name = self.station_name
         self.payload.station_hash = self.station_hash
-        ts = time.time()
-        self.payload.timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        self.payload.timestamp = str(datetime.datetime.utcnow())
 
         if self.debug:
             pprint(self.payload.timestamp)
@@ -1097,7 +1105,7 @@ class PIWEM:
 
 
     def get_dht11_buffers(self):
-        self.conn.executemany("SELECT humidity, c_temp, f_temp FROM `weather_data`.`dht11` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
+        self.conn.executemany("SELECT humidity, c_temp, f_temp, `timestamp` FROM `weather_data`.`dht11` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
         # fetch all of the rows from the query
         return self.conn.fetchall()
 
@@ -1131,7 +1139,7 @@ class PIWEM:
         if self.verbose:
             print "Starting upload of Weather Underground Data to: " + self.wu_url
 
-        timestamp = datetime.datetime.utcnow()
+        timestamp = str(datetime.datetime.utcnow())
 
         if self.temp_flag == "bmp085":
             tempf = self.sensor_values.bmp085.temp[1]
