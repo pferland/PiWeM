@@ -35,11 +35,10 @@ $station = $PiWem_Front->GetStationInfo($_REQUEST['station_hash']);
 
 $Station_Data_Array['station_name'] = $station['station_name'];
 $Station_Data_Array['station_hash'] = $station['station_hash'];
-$Station_Data_Array['lastupdate'] = $station['lastupdate'];
+$Station_Data_Array['lastupdate'] =  date('m/d/Y H:i:s', strtotime($station['lastupdate']) + $user_tz);
 $Station_Data_Array['altitude'] = $PiWem_Front->GetStationAltitude($station['station_hash'], $PiWem_Front->Alt_Sensor);
 
 $sensors = $PiWem_Front->GetStationSensors($Station_Data_Array['station_hash']);
-
 
 foreach($sensors as $sensor=>$value)
 {
@@ -61,7 +60,7 @@ foreach($sensors as $sensor=>$value)
 
     foreach($data as $key=>$value)
     {
-        $data[$key]['timestamp'] = date('H:i:s', strtotime($value['timestamp']) + $user_tz);
+        $data[$key]['timestamp'] = date('m/d H:i:s', strtotime($value['timestamp']) + $user_tz);
     }
 
 
