@@ -917,7 +917,7 @@ class PIWEM:
         self.payload = Payload.PayloadData()
         self.payload.station_name = self.station_name
         self.payload.station_hash = self.station_hash
-        self.payload.timestamp = str(datetime.datetime.utcnow())
+        self.payload.timestamp = str(self.sensor_values.timestamp)
 
         if self.debug:
             pprint(self.payload.timestamp)
