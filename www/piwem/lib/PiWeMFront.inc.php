@@ -105,7 +105,7 @@ class PiWeMFront
             $query .= "AND `$not_zero_field` NOT LIKE 0 ";
         }
 
-        $query .= "ORDER BY `id` DESC ";
+        $query .= "ORDER BY `timestamp` DESC ";
 
         if($limit !== 0)
         {
