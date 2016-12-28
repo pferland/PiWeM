@@ -19,7 +19,7 @@
 -- Current Database: `weather_data`
 --
 
-CREATE DATABASE /*!32312 IF NOT EXISTS*/ `weather_data` /*!40100 DEFAULT CHARACTER SET latin1 */;
+CREATE DATABASE /*!32312 IF NOT EXISTS*/ `weather_data` /*!40100 DEFAULT CHARACTER SET utf8 */;
 
 USE `weather_data`;
 
@@ -45,7 +45,7 @@ CREATE TABLE `Station_sensors` (
   `timestamp` varchar(255) NOT NULL,
   `am2302` tinyint(1) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -65,7 +65,7 @@ CREATE TABLE `Stations` (
   `buffered_data` tinyint(4) DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `station_hash` (`station_hash`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -84,7 +84,7 @@ CREATE TABLE `am2302` (
   `timestamp` varchar(255) NOT NULL,
   `buffered_data` tinyint(4) DEFAULT '0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -102,7 +102,7 @@ CREATE TABLE `analog_temp_sensor` (
   `timestamp` varchar(255) NOT NULL,
   `buffered_data` tinyint(4) DEFAULT '0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=113480 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=113480 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -122,7 +122,7 @@ CREATE TABLE `bmp085` (
   `altitude` float NOT NULL,
   `buffered_data` tinyint(4) DEFAULT '0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=113504 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=113504 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -142,7 +142,7 @@ CREATE TABLE `bmp180` (
   `altitude` float NOT NULL,
   `buffered_data` tinyint(4) DEFAULT '0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -162,7 +162,7 @@ CREATE TABLE `bmp280` (
   `altitude` float NOT NULL,
   `buffered_data` tinyint(4) DEFAULT '0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=110027 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=110027 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -181,7 +181,7 @@ CREATE TABLE `dht11` (
   `timestamp` varchar(255) NOT NULL,
   `buffered_data` tinyint(4) DEFAULT '0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=113497 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=113497 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -200,7 +200,7 @@ CREATE TABLE `dht22` (
   `timestamp` varchar(255) NOT NULL,
   `buffered_data` tinyint(4) DEFAULT '0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -217,7 +217,7 @@ CREATE TABLE `photoresistor` (
   `timestamp` varchar(255) NOT NULL,
   `buffered_data` tinyint(4) DEFAULT '0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=109758 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=109758 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -235,7 +235,27 @@ CREATE TABLE `thermistor` (
   `timestamp` varchar(255) NOT NULL,
   `buffered_data` tinyint(4) DEFAULT '0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `power_monitor`
+--
+
+DROP TABLE IF EXISTS `power_monitor`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `power_monitor` (
+	`id` INT(255) NOT NULL AUTO_INCREMENT,
+	`voltage` FLOAT NOT NULL,
+	`shunt_mV` FLOAT NOT NULL,
+	`current_mA` int(11) NOT NULL,
+	`power_mW` FLOAT NOT NULL,
+	`station_hash` VARCHAR(64) NOT NULL,
+	`timestamp` VARCHAR(255) NOT NULL,
+	`buffered_data` tinyint(4) DEFAULT '0',
+	PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -246,5 +266,3 @@ CREATE TABLE `thermistor` (
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-
--- Dump completed on 2016-11-06 18:35:34
