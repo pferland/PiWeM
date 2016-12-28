@@ -14,6 +14,9 @@ sql_password = toor
 ;Location of the Central PiWem Server.
 piwem_central_server = http://dev.randomintervals.com
 
+;Central Collection server API Key
+station_key = 'REPLACE_WITH_KEY_GENERATED_FROM_RegisterNode.php'
+
 ;Upload data to the PiWem Central Server Defined above.
 upload_to_central_server = 0
 
@@ -76,9 +79,9 @@ camera_enabled = 0
 ; Right now I am trying to use the SwitchDoc Labs WeatherRack - Anemometer & Wind Vane.
 ; They are just simple circuits that are connected to step motors it seems, should be as simple as connecting them to the PCF8591
 analog_anemometer_enabled = 0
-analog_anemometer_channel = 3
+analog_anemometer_gpio = 3
 analog_wind_vane_enabled = 0
-analog_wind_vane_channel = 1
+analog_wind_vane_gpio = 1
 
 ; GPIO Pin Number for the DHT11 Temperature & Humidity Sensor
 dht11_pin = 4

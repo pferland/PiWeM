@@ -1,28 +1,19 @@
 from pprint import pprint
 
-import Adafruit_BMP.BMP085 as BMP085
 import RPi.GPIO as GPIO
-import MySQLdb
 import Payload
-import bmp280 as bmp280_sn
 import datetime
 import json
 import math
 import os
-import picamera
 import socket
 import sys
 import time
 import uuid
 import urllib
 import urllib2
-from PIL import Image
-from PIL import ImageDraw
-from PIL import ImageFont
 
-import PCF8591 as ADC
 from SensorData import SensorValues
-from dht11 import dht11
 
 global sensor
 
@@ -95,7 +86,7 @@ class PIWEM:
     conn = None
 
     #PCF8591 Analog to Digital switcher init, address, and device settings, address up to 4 devices at once.
-    pcf8591_instance        = ADC
+    pcf8591_instance        = None
     pcf8591_address         = -1
     photosresistor_channel  = -1
     ats_channel             = -1
@@ -119,20 +110,24 @@ class PIWEM:
     def __init__(self, settings=[]):
         if not settings:
             raise ValueError("PiWeM settings argument was not set...")
+
         self.station_name = socket.gethostname()
-        self.db = MySQLdb.connect(host=settings['sql_host'], user=settings['sql_user'], passwd=settings['sql_password'])
-        self.conn = self.db.cursor()
+        self.station_key = settings['station_key']
         self.verbose = int(settings['verbose'])
         self.debug = int(settings['debug'])
+
         self.localstorage = int(settings['localstorage'])
         self.bufferlocally = int(settings['bufferlocally'])
+
         self.upload_to_weather_underground = int(settings['upload_to_weather_underground'])
         self.wu_url = settings['wu_url']
         self.wu_station_id = settings['wu_station_id']
         self.wu_station_key = settings['wu_station_key']
+
         self.temp_flag = settings['temp_flag']
         self.pressure_flag = settings['pressure_flag']
         self.humidity_flag = settings['humidity_flag']
+
         self.camera_enabled = int(settings['camera_enabled'])
         self.bmp085_enabled = int(settings['bmp085_enabled'])
         self.bmp180_enabled = int(settings['bmp180_enabled'])
@@ -147,34 +142,16 @@ class PIWEM:
         self.analog_anemometer_enabled = int(settings['analog_anemometer_enabled'])
         self.analog_wind_vane_enabled = int(settings['analog_wind_vane_enabled'])
 
-        # Check for and/or generate station hash and write it to a file.
-        if not os.path.isfile("station_hash.txt"):
-            station_hash_file   = open('station_hash.txt', 'w+')
-            station_hash        = str(uuid.uuid4())
-            station_hash_file.write(station_hash)
-            station_hash_file.close()
-            self.station_hash = station_hash
-        else:
-            station_hash_file = open('station_hash.txt', 'r')
-            self.station_hash = station_hash_file.read()
-            station_hash_file.close()
+        if self.localstorage or self.bufferlocally:
+            print "Open MySQL Connection.."
+            import MySQLdb
+            self.db = MySQLdb.connect(host=settings['sql_host'], user=settings['sql_user'], passwd=settings['sql_password'])
+            self.conn = self.db.cursor()
+            # Check for and/or generate station hash and write it to a file.
+            self.get_station_hash()
 
-        # Check for and/or generate station key and write it to a file.
-        if not os.path.isfile("station_key.txt"):
-            station_key_file   = open('station_key.txt', 'w+')
-            station_key        = str(uuid.uuid4())
-            station_key_file.write(station_key)
-            station_key_file.close()
-            self.station_key = station_key
-            self.insert_station()
-            self.insert_station_sensors()
-        else:
-            station_key_file = open('station_key.txt', 'r')
-            self.station_key = station_key_file.read()
-            station_key_file.close()
-
-        if self.debug:
-            print "Station Hash: " + self.station_hash
+            if self.debug:
+                print "Station Hash: " + self.station_hash
         self.loop_int   = 0
         self.sleep_time = float(settings['sleep_time'])
 
@@ -188,9 +165,13 @@ class PIWEM:
         self.pcf8591_address = int(settings['pcf8591_address'], 16)
         self.thermistor_channel = settings['thermistor_channel']
         self.ats_channel = settings['ats_channel']
-        self.brightness = settings['brightness']
-        self.resolution = settings['resolution']
-        self.jpeg_quality = settings['jpeg_quality']
+        self.brightness = int(settings['brightness'])
+        res = settings['resolution'].split(",")
+        self.resolution = int(res[0]),int(res[1])
+        self.rotation = int(settings['rotation'])
+        self.jpeg_quality = int(settings['jpeg_quality'])
+        self.text_font = settings['text_font']
+        self.output_path = settings['output_path']
         self.photosresistor_channel = int( settings['photoresistor_channel'] )# Photoresistor on the PCF8591 channel 0
         self.ats_channel = int(settings['ats_channel'])
         self.thermistor_channel = int(settings['thermistor_channel'])
@@ -206,7 +187,27 @@ class PIWEM:
         self.ATS_GPIO.setup(27, GPIO.IN)
         self.sensor_values = SensorValues.SensorValues()
         self.setup_sensors()
-        self.update_station_sensors()
+        if self.localstorage or self.bufferlocally:
+            self.update_station_sensors()
+
+
+    def get_station_hash(self):
+        if not os.path.isfile("station_hash.txt"):
+            station_hash = self.genhash()
+            self.station_hash = station_hash
+        else:
+            station_hash_file = open('station_hash.txt', 'r')
+            self.station_hash = station_hash_file.read()
+            station_hash_file.close()
+        return self.station_hash
+
+
+    def genhash(self):
+        station_hash_file   = open('station_hash.txt', 'w+')
+        station_hash        = str(uuid.uuid4())
+        station_hash_file.write(station_hash)
+        station_hash_file.close()
+        return station_hash
 
 
     def setup_sensors(self):
@@ -260,6 +261,7 @@ class PIWEM:
 
     def setup_bmp085(self, address = 0x77):
         if self.bmp085_enabled:
+            import Adafruit_BMP.BMP085 as BMP085
             self.bmp085_address = address
             self.bmp085_instance = BMP085.BMP085(address=self.bmp085_address)
             return 0
@@ -267,6 +269,7 @@ class PIWEM:
 
     def setup_bmp180(self, address = 0x77):
         if self.bmp180_enabled:
+            import Adafruit_BMP.BMP085 as BMP085
             self.bmp180_address = address
             self.bmp180_instance = BMP085.BMP085(address=self.bmp180_address) #Temp filler, till i get the hardware and can actually use it.
             return 0
@@ -274,6 +277,7 @@ class PIWEM:
 
     def setup_bmp280(self, address = 0x76):
         if self.bmp280_enabled:
+            import bmp280 as bmp280_sn
             self.bmp280_address = address
             self.bmp280_instance = bmp280_sn.bmp280(address=self.bmp280_address) #Temp filler, till i get the hardware and can actually use it.
             return 0
@@ -281,13 +285,16 @@ class PIWEM:
 
     def setup_pcf8591(self, address = 0x48):
         if self.pcf8591_enabled:
+            import PCF8591 as ADC
             self.pcf8591_address = address
+            self.pcf8591_instance = ADC
             self.pcf8591_instance.setup(self.pcf8591_address)
             return 0
 
 
     def setup_dht11(self, pin):
         if self.dht11_enabled:
+            from dht11 import dht11
             self.dht11_pin      = pin
             self.dht11_instance = dht11.DHT11(pin=self.dht11_pin)
             return 0
@@ -295,6 +302,7 @@ class PIWEM:
 
     def setup_dht22(self, pin):
         if self.dht22_enabled:
+            from dht11 import dht11
             self.dht22_pin = pin
             self.dht22_instance = dht11.DHT11(pin=self.dht22_pin)   # will add after the dht22 order comes in :/ ...
             return 0
@@ -302,6 +310,7 @@ class PIWEM:
 
     def setup_am2302(self, pin):
         if self.am2302_enabled:
+            from dht11 import dht11
             self.am2302_pin = pin
             self.am2302_instance = dht11.DHT11(pin=self.am2302_pin)
             #self.am2302_instance = DHT   # will add after the dht22 order comes in :/ ...
@@ -310,7 +319,9 @@ class PIWEM:
 
     def setup_camera(self):
         if self.camera_enabled:
+            import picamera
             self.camera             = picamera.PiCamera()
+            self.camera.rotation    = self.rotation
             self.camera.brightness  = self.brightness
             self.camera.resolution  = self.resolution
             return 0
@@ -630,7 +641,7 @@ class PIWEM:
     def take_picture(self):   # well i think this is self-explanatory...
         if self.debug:
             print("Take Picture.")
-        image_name = self.tmp_dir + "Image_" + str(self.loop_int) + ".jpg"
+        image_name = self.tmp_dir + "Image_" + str(datetime.datetime.utcnow()) + ".jpg"
         self.camera.capture(image_name)
         return image_name
 
@@ -643,15 +654,9 @@ class PIWEM:
 
 
     def get_data_trigger(self):  #Main loop trigger and handler for the daemon
-        if self.camera_enabled:
-            if self.verbose:
-                print "Start Picture capture."
-            image = self.take_picture()
-            img = Image.open( image)
-            filename = os.path.basename(image)
-            draw = ImageDraw.Draw(img)
-            #font = ImageFont.truetype(<font-file>, <font-size>)
-            font = ImageFont.truetype(self.text_font, 40)
+        from PIL import Image
+        from PIL import ImageDraw
+        from PIL import ImageFont
 
         if self.verbose:
             print "Get Sensor Data."
@@ -715,15 +720,32 @@ class PIWEM:
             pprint (vars(self.sensor_values))
 
         if self.camera_enabled:
+            if self.verbose:
+                print "Start Picture capture."
+            image = self.take_picture()
+            img = Image.open( image)
+            print image
+            filename = os.path.basename(image)
+            print filename
+            draw = ImageDraw.Draw(img)
+            #font = ImageFont.truetype(<font-file>, <font-size>)
+            print self.text_font
+            font = ImageFont.truetype(self.text_font, 40)
+            print "after load of font"
             #draw.text((x, y),"Sample Text",(r,g,b))
             draw.text((10, 0), "Humidity:       " + str(self.sensor_values.dht11.humidity) + "% " ,self.text_color, font=font)
-            draw.text((10, 60), "Temperature: " + str(self.sensor_values.bmp085.temp[0]) + "C / " + str(self.sensor_values.bmp085.temp[1]) + "F" ,self.text_color, font=font)
+            draw.text((10, 60), "Temperature: " + str(self.sensor_values.dht11.temp[0]) + "C / " + str(self.sensor_values.dht11.temp[1]) + "F" ,self.text_color, font=font)
+            draw.text((10, 930), str(datetime.datetime.now()) ,self.text_color, font=font)
             img.save(self.output_path + filename, quality=self.jpeg_quality)
             os.remove(image)
             print( "Saved Image: {0}".format(self.output_path + filename) )
 
+        if self.localstorage or self.bufferlocally:
+            self.update_station_timestamp()
+
         if self.verbose:
             print "|---------------------------------------------------------------------------|"
+
         return 1
 
 
