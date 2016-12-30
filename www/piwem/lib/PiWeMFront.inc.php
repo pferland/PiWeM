@@ -149,4 +149,33 @@ class PiWeMFront
         }
         return $fetch;
     }
+
+
+    function GetStationPower($station_hash = "", $limit = 500, $order = "DESC")
+    {
+        $ret = array();
+        $prep = $this->SQL->conn->prepare("SELECT `shunt_mV`, `voltage`, `timestamp` FROM `weather_data`.`power_monitor` WHERE station_hash = ? ORDER BY id $order LIMIT $limit");
+        $prep->bindParam(1, $station_hash, PDO::PARAM_STR);
+        $prep->execute();
+        $ret['voltage'] = $prep->fetchAll(2);
+        if($this->debug) {
+            var_dump($ret['voltage']);
+        }
+        $prep = $this->SQL->conn->prepare("SELECT `current_mA`, `timestamp` FROM `weather_data`.`power_monitor` WHERE station_hash = ? ORDER BY id $order LIMIT $limit");
+        $prep->bindParam(1, $station_hash, PDO::PARAM_STR);
+        $prep->execute();
+        $ret['current'] = $prep->fetchAll(2);
+        if($this->debug) {
+            var_dump($ret['current']);
+        }
+        $prep = $this->SQL->conn->prepare("SELECT `power_mW`, `timestamp` FROM `weather_data`.`power_monitor` WHERE station_hash = ? ORDER BY id $order LIMIT $limit");
+        $prep->bindParam(1, $station_hash, PDO::PARAM_STR);
+        $prep->execute();
+        $ret['power'] = $prep->fetchAll(2);
+        if($this->debug) {
+            var_dump($ret['power']);
+        }
+        return $ret;
+    }
+
 }
