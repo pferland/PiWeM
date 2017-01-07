@@ -30,13 +30,18 @@ $stations = $PiWem_Front->GetStations();
 $Stations_Data_Array = array();
 foreach($stations as $station)
 {
+    if (!($sensors = $PiWem_Front->GetStationSensors($station['station_hash'])))
+    {
+        continue;
+    }
+
     $Stations_Data_Array[$station['station_hash']] = array();
     $Stations_Data_Array[$station['station_hash']]['station_name'] = $station['station_name'];
     $Stations_Data_Array[$station['station_hash']]['station_hash'] = $station['station_hash'];
-    $Stations_Data_Array[$station['station_hash']]['last_update'] = $station['lastupdate'];
+    $Stations_Data_Array[$station['station_hash']]['last_update'] = date("Y-m-d H:i:s", strtotime($station['lastupdate'])) ;
 
-    $sensors = $PiWem_Front->GetStationSensors($station['station_hash']);
     $Stations_Data_Array[$station['station_hash']]['sensors'] = array();
+
     foreach($sensors as $sensor=>$value)
     {
         if($value == "1")

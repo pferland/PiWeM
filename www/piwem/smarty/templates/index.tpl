@@ -2,8 +2,8 @@
 	<table>
 		<tr>
 		{foreach from=$stations item="station"}
-			<td align="center">
-			<table style="width: 10%">
+			<td style="vertical-align: top">
+			<table style="width: 100%;vertical-align: top">
 				<tr class="station_header">
 					<th style="width: 100%" align="center" colspan="2"> <a href="station.php?station_hash={$station.station_hash}">{$station.station_name}</a></th>
 				</tr>
@@ -16,8 +16,8 @@
 							<th colspan="2">Photoresistor</th>
 						</tr>
 						<tr class="sensor_values">
-							<td>Photolevel</td>
-							<td>{$sensor.photolevel}</td>
+							<td style="background-color: #7d87ff">Photolevel</td>
+							<td style="width: 70px;text-align: center">{$sensor.photolevel}</td>
 						</tr>
 					{/if}
 
@@ -26,16 +26,16 @@
 							<th colspan="2">{$key}</th>
 						</tr>
 						<tr class="sensor_values">
-							<td>Celsius</td>
-							<td>{$sensor.c_temp}</td>
+							<td style="background-color: #7d87ff">Celsius</td>
+							<td style="width: 70px;text-align: center">{$sensor.c_temp}</td>
 						</tr>
 						<tr class="sensor_values">
-							<td>Fahrenheit</td>
-							<td>{$sensor.f_temp}</td>
+							<td style="background-color: #7d87ff">Fahrenheit</td>
+							<td style="width: 70px;text-align: center">{$sensor.f_temp}</td>
 						</tr>
 						<tr class="sensor_values">
-							<td>Humidity</td>
-							<td>{$sensor.humidity}</td>
+							<td style="background-color: #7d87ff">Humidity</td>
+							<td style="width: 70px;text-align: center">{$sensor.humidity}</td>
 						</tr>
 					{/if}
 
@@ -44,20 +44,20 @@
 							<th colspan="2">{$key}</th>
 						</tr>
 						<tr class="sensor_values">
-							<td>Celsius</td>
-							<td>{$sensor.c_temp}</td>
+							<td style="background-color: #7d87ff">Celsius</td>
+							<td style="width: 70px;text-align: center">{$sensor.c_temp}</td>
 						</tr>
 						<tr class="sensor_values">
-							<td>Fahrenheit</td>
-							<td>{$sensor.f_temp}</td>
+							<td style="background-color: #7d87ff">Fahrenheit</td>
+							<td style="width: 70px;text-align: center">{$sensor.f_temp}</td>
 						</tr>
 						<tr class="sensor_values">
-							<td>Pressure</td>
-							<td>{$sensor.pressure}</td>
+							<td style="background-color: #7d87ff">Pressure</td>
+							<td style="width: 70px;text-align: center">{$sensor.pressure}</td>
 						</tr>
 						<tr class="sensor_values">
-							<td>Altitude</td>
-							<td>{$sensor.altitude}</td>
+							<td style="background-color: #7d87ff">Altitude</td>
+							<td style="width: 70px;text-align:center;">{$sensor.altitude}</td>
 						</tr>
 					{/if}
 
@@ -66,12 +66,12 @@
 							<th colspan="2">{$key}</th>
 						</tr>
 						<tr class="sensor_values">
-							<td>Celsius</td>
-							<td>{$sensor.c_temp}</td>
+							<td style="background-color: #7d87ff">Celsius</td>
+							<td style="width: 70px;text-align: center">{$sensor.c_temp}</td>
 						</tr>
 						<tr class="sensor_values">
-							<td>Fahrenheit</td>
-							<td>{$sensor.f_temp}</td>
+							<td style="background-color: #7d87ff">Fahrenheit</td>
+							<td style="width: 70px;text-align: center">{$sensor.f_temp}</td>
 						</tr>
 					{/if}
 				{/foreach}
