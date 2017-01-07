@@ -18,7 +18,7 @@
 					<td style="width: 50%; vertical-align:top; text-align:left;">
 						<ul>
 							<li>
-								Station Name: {$station_data.station_name}
+								Station Name: <a href="station.php?station_hash={$station_data.station_name}">{$station_data.station_name}</a>
 							</li>
 							<li>
 								Last Update: {$station_data.lastupdate}
