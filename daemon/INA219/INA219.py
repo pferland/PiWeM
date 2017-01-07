@@ -1,5 +1,10 @@
 #!/usr/bin/python
 
+# ============================================== #
+# Modified from the INA219.py script found at:   #
+# https://github.com/scottjw/subfact_pi_ina219   #
+# ============================================== #
+
 import time
 import smbus
 from Adafruit_I2C import Adafruit_I2C
