@@ -26,6 +26,9 @@
 							<li>
 								Altitude: {$station_data.altitude} Meters
 							</li>
+							<li>
+								<a href="station_power.php?station_hash={$station_data.station_hash}">Power Usage Charts</a>
+							</li>
 						</ul>
 					</td>
 

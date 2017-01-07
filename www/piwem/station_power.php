@@ -40,23 +40,6 @@ $Station_Data_Array['lastupdate'] =  date('m/d/Y H:i:s', strtotime($station['las
 
 $Station_Power_Array = $PiWem_Front->GetStationPower($Station_Data_Array['station_hash'], $limit, $order);
 
-foreach($Station_Power_Array['voltage'] as $key=>$value)
-{
-#    var_dump($value);
-    $Station_Power_Array['voltage'][$key]['timestamp'] = date('m/d H:i:s', strtotime($value['timestamp']) + $user_tz);
-}
-
-foreach($Station_Power_Array['current'] as $key=>$value)
-{
-    $Station_Power_Array['current'][$key]['timestamp'] = date('m/d H:i:s', strtotime($value['timestamp']) + $user_tz);
-}
-
-foreach($Station_Power_Array['power'] as $key=>$value)
-{
-    $Station_Power_Array['power'][$key]['timestamp'] = date('m/d H:i:s', strtotime($value['timestamp']) + $user_tz);
-}
-
-
 if(!$PiWem_Front->debug)
 {
     $PiWem_Front->smarty->assign("stations", $stations);

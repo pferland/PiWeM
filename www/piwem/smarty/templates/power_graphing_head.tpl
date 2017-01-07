@@ -117,7 +117,7 @@
 
 				var data_power = google.visualization.arrayToDataTable(
 						[
-							['Timestamp', 'Power'],
+							['Timestamp', 'Power mW'],
 							{foreach from=$value item=prow}
 							[new Date('{$prow.timestamp}'),  {$prow.power_mW} ],
 							{/foreach}
