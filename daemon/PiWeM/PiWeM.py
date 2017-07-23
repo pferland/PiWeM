@@ -112,7 +112,7 @@ class PIWEM:
             raise ValueError("PiWeM settings argument was not set...")
 
         self.station_name = socket.gethostname()
-        self.station_key = settings['station_key']
+        #self.station_key = settings['station_key']
         self.verbose = int(settings['verbose'])
         self.debug = int(settings['debug'])
 
@@ -141,6 +141,13 @@ class PIWEM:
         self.photoresistor_enabled = int(settings['photoresistor_enabled'])
         self.analog_anemometer_enabled = int(settings['analog_anemometer_enabled'])
         self.analog_wind_vane_enabled = int(settings['analog_wind_vane_enabled'])
+
+        print "-----------------------------"
+
+        pprint(settings)
+
+        print "-----------------------------"
+
 
         if self.localstorage or self.bufferlocally:
             print "Open MySQL Connection.."

@@ -1,4 +1,4 @@
-Random Intervals -> WiFiDB -> Read-me
+Random Intervals -> PiWeM -> Read-me
 =====================================
 
   A set of highly configurable PHP & Python scripts to gather weather data and log it.
@@ -38,7 +38,7 @@ Random Intervals -> WiFiDB -> Read-me
 	WWW:
 		PHP 5.3 or later
 			PDO & PDO-MySQL
-			Smarty (If not using the one that WiFiDB comes with)
+			Smarty (If not using the one that PiWeM comes with)
 		MariaDB 5.2 or later
 		Apache 2.2 or later
 		A Web-browser (doh!)
