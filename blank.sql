@@ -18,6 +18,7 @@
 --
 -- Current Database: `weather_data`
 --
+drop database `weather_data`;
 
 CREATE DATABASE /*!32312 IF NOT EXISTS*/ `weather_data` /*!40100 DEFAULT CHARACTER SET utf8 */;
 
@@ -234,6 +235,7 @@ CREATE TABLE `power_monitor` (
 	`current_mA` int(11) NOT NULL,
 	`power_mW` FLOAT NOT NULL,
 	`station_hash` VARCHAR(64) NOT NULL,
+	`channel` INT(11) NOT NULL,
 	`timestamp` VARCHAR(255) NOT NULL,
 
 	`buffered_data` tinyint(4) DEFAULT '0',
@@ -256,6 +258,42 @@ CREATE TABLE `thermistor` (
   `buffered_data` tinyint(4) DEFAULT '0',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;
+
+--
+-- Table structure for table `wind_speed`
+--
+
+DROP TABLE IF EXISTS `wind_speed`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `wind_speed` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `miles_per_hour` float(3,2) NOT NULL,
+  `meters_per_second` float(3,2) NOT NULL,
+  `station_hash` varchar(64) NOT NULL,
+  `timestamp` varchar(255) NOT NULL,
+  `buffered_data` tinyint(4) DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;
+
+--
+-- Table structure for table `wind_direction`
+--
+
+DROP TABLE IF EXISTS `wind_direction`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `wind_direction` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `direction` int(11) NOT NULL,
+  `station_hash` varchar(64) NOT NULL,
+  `timestamp` varchar(255) NOT NULL,
+  `buffered_data` tinyint(4) DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;
+
+
+
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

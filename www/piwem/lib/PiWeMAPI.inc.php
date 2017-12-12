@@ -113,6 +113,9 @@ class PiWeMAPI
                             case "therm":
                                 print $this->import_thermistor($sensor);
                                 break;
+                            case "power":
+                                print $this->import_power($sensor);
+                                break;
                         }
                         print "------------------------------------<br>\r\n";
                     }
@@ -262,6 +265,21 @@ class PiWeMAPI
         return 1;
     }
 
+    function import_power($data)
+    {
+        if(empty($data))
+        {return 0;}
+        $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`power` (voltage, shunt_mV, current_mA, power_mW, station_hash, channel, `timestamp`) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $prep->bindParam(1, $data['voltage'], PDO::PARAM_STR);
+        $prep->bindParam(2, $data['shunt_mV'], PDO::PARAM_STR);
+        $prep->bindParam(3, $data['current_mA'], PDO::PARAM_STR);
+        $prep->bindParam(4, $data['power_mW'], PDO::PARAM_STR);
+        $prep->bindParam(5, $this->station_hash, PDO::PARAM_STR);
+        $prep->bindParam(6, $data['channel'], PDO::PARAM_STR);
+        $prep->bindParam(7, $this->timestamp, PDO::PARAM_STR);
+        $prep->execute();
+        return 1;
+    }
 
 
 

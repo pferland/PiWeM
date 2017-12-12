@@ -1,4 +1,5 @@
-import bmp085_data, bmp180_data, bmp280_data, dht11_data, dht22_data, am2302_data
+import bmp085_data, bmp180_data, bmp280_data, dht11_data, dht22_data, am2302_data, power_data
+
 
 class SensorValues(object):
     def __init__(self):
@@ -14,12 +15,14 @@ class SensorValues(object):
 
         self.am2302 = am2302_data.am2302_data()
 
-        self.thermistor          = []
-        self.analog_temp_sensor  = []
-        self.photoresistor       = 0
+        self.power = [power_data.power_data(), power_data.power_data(), power_data.power_data()]
 
-        self.wind_speed          = 0
-        self.wind_direction      = 0
+        self.thermistor = []
+        self.analog_temp_sensor = []
+        self.photoresistor = 0
 
-        self.timestsamp          = ""
-        self.fetch_error         = []
+        self.wind_speed = []
+        self.wind_direction = ""
+
+        self.timestsamp = ""
+        self.fetch_error = []

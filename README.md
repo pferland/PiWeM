@@ -30,7 +30,8 @@ Random Intervals -> PiWeM -> Read-me
 			PCF8591***
 			Photoresistor analog module
 			Thermistor analog module
-
+			INA219 or INA3221 (optional) if you are getting negitive current, then the wires are hooked up backwards.
+			
 	* = As soon as I figure out the am2302 library it will be supported.
 	** = In theory it works, don't have the hardware yet though, so it is untested.
 	*** = 8bit 4 channel analog to digital converter. Used for the photo-resistor, analog thermisitor, and maybe some other things in the future
@@ -57,6 +58,7 @@ Random Intervals -> PiWeM -> Read-me
 			dht11
 			PCF8591
 			bmp280
+			smbus
 		MariaDB or MySQL 5.6+
 		
   Summary:

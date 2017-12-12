@@ -145,3 +145,4 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 daemon/test.py
+dummy_data.sql
