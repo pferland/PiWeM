@@ -1,4 +1,7 @@
 from pprint import pprint
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
 
 import RPi.GPIO as GPIO
 import datetime
@@ -73,6 +76,7 @@ class PIWEM:
 
     # Initial Values for Wind Sensors
     wind_enabled                   = 0
+    anemometer_sensor_diameter     = 0
     analog_wind_anemometer_enabled = 0
     analog_wind_vane_enabled       = 0
     analog_wind_anemometer_pin     = 0
@@ -154,7 +158,7 @@ class PIWEM:
         self.analog_wind_anemometer_enabled = int(settings['analog_wind_anemometer_enabled'])
         self.analog_wind_vane_enabled = int(settings['analog_wind_vane_enabled'])
         self.wind_enabled = int(settings['wind_enabled'])
-
+        self.anemometer_sensor_diameter = float(settings['anemometer_sensor_diameter'])
         if self.debug:
             print "-----------------------------"
             pprint(settings)
@@ -221,7 +225,7 @@ class PIWEM:
         self.power = power.power(sql_db=MySQLdb.connect(host=settings['sql_host'], user=settings['sql_user'], passwd=settings['sql_password']),
                                  power_monitor=self.power_monitor, power_monitor_device=self.power_monitor_device,
                                  INA219_address=self.INA219_address, INA3221_address=self.INA3221_address, debug=self.debug, verbose=self.verbose)
-        self.wind = wind.wind(analog_wind_vane_pin=self.analog_wind_vane_pin, analog_wind_anemometer_pin=self.analog_wind_anemometer_pin, debug=0, verbose=self.verbose)
+        self.wind = wind.wind(anemometer_sensor_diameter=self.anemometer_sensor_diameter, analog_wind_vane_pin=self.analog_wind_vane_pin, analog_wind_anemometer_pin=self.analog_wind_anemometer_pin, debug=0, verbose=self.verbose)
         if self.get_station_key() == "":
             if self.verbose:
                 print("Updating Station Key")
@@ -265,10 +269,10 @@ class PIWEM:
 
     def genhash(self):
         station_hash_file = open('station_hash.txt', 'w+')
-        station_hash = str(uuid.uuid4())
-        station_hash_file.write(station_hash)
+        self.station_hash = str(uuid.uuid4())
+        station_hash_file.write(self.station_hash)
         station_hash_file.close()
-        return station_hash
+        return self.station_hash
 
     def setup_sensors(self):
         self.setup_dht11(pin=int(self.dht11_pin))
@@ -810,10 +814,6 @@ class PIWEM:
         return data[0][0]
 
     def get_data_trigger(self):  #Main loop trigger and handler for the daemon
-        from PIL import Image
-        from PIL import ImageDraw
-        from PIL import ImageFont
-
         if self.verbose:
             print "Get Sensor Data."
         self.get_sensor_data()

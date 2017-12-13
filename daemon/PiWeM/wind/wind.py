@@ -1,14 +1,14 @@
 import RPi.GPIO as GPIO
-import time, datetime, signal, sys
+import time, datetime, sys
 
 
 class wind:
 
-    def __init__(self, analog_wind_vane_pin=0, analog_wind_anemometer_pin=0, debug=0, verbose=0):
+    def __init__(self, analog_wind_vane_pin=0, analog_wind_anemometer_pin=0, anemometer_sensor_diameter=0, debug=0, verbose=0):
 
         self.wind_direction_pin = analog_wind_vane_pin
         self.wind_speed_pin = analog_wind_anemometer_pin
-        self.meter_radius = 0.1778
+        self.meter_radius = anemometer_sensor_diameter
         self.debug = debug
         self.verbose = verbose
         self.cardinal = {
@@ -114,8 +114,9 @@ class wind:
             read_value = self.gpio_read(self.wind_speed_pin)
             now = datetime.datetime.utcnow().strftime('%S.%f')
             calc = float(now) - prev_time
-            if self.debug:
-                print(str(now) + " : " + str(read_value))
+            #if self.debug:
+            #    print(str(now) + " : " + str(read_value))
+            #print("-" + read_value + "-")
             if read_value:
                 click = click + 1
                 sys.stdout.write(".")
@@ -125,7 +126,7 @@ class wind:
             end_process_time = time.time()
             prev_time = float(now)
             # if ( (read_value / 100) > 1 ) and ( calc > 0.02 ) and (read_value != prev_value) :
-            time.sleep(0.05)
+            time.sleep(0.001)
             end = time.time()
             calc_runtime = end - start
             total_runtime = total_runtime + calc_runtime
