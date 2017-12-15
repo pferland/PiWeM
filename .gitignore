@@ -145,3 +145,4 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 dummy_data.sql
+import.py

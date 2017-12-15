@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import time, MySQLdb, datetime
+import time, datetime
 from INA219 import INA219
 from INA3221 import INA3221
 from PiWeMConfig.PiWeMConfig import PiWeMConfig
@@ -26,6 +26,7 @@ settings['analog_wind_vane_channel'] = 0
 mon = PiWeM.PIWEM( settings=settings)
 
 use_ina3221 = 1
+sleep = 5
 
 if use_ina3221:
     ina = INA3221.INA3221()
@@ -54,7 +55,7 @@ if use_ina3221:
                 (mon.station_hash, i, ShuntVoltage_mV, Voltage_V, Current_mA, Power_mW, timestamp),
             ])
             mon.db.commit()
-        time.sleep(2)
+        time.sleep(sleep)
 else:
     ina = INA219.INA219(address=0x44)
     while 1:
@@ -76,4 +77,4 @@ else:
             (mon.station_hash, ShuntVoltage_mV, Voltage_V, Current_mA, Power_mW, timestamp),
         ])
         mon.db.commit()
-        time.sleep(2)
+        time.sleep(sleep)

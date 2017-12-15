@@ -8,7 +8,9 @@ class wind:
 
         self.wind_direction_pin = analog_wind_vane_pin
         self.wind_speed_pin = analog_wind_anemometer_pin
-        self.meter_radius = anemometer_sensor_diameter
+        self.meter_diameter = anemometer_sensor_diameter
+        self.circumference = (self.meter_diameter * 3.14)
+        self.circumference_ft = self.circumference / 12
         self.debug = debug
         self.verbose = verbose
         self.cardinal = {
@@ -106,50 +108,59 @@ class wind:
         total_runtime = 0.0
         prev_time = 0.0
         click = 0
-        sample_length = 10.0
+        sample_length = 15.0
         while total_runtime < sample_length:
             if self.debug:
                 print "+++++++++++++++++++++++++++++++++++++++++++"
             start = time.time()
             read_value = self.gpio_read(self.wind_speed_pin)
             now = datetime.datetime.utcnow().strftime('%S.%f')
-            calc = float(now) - prev_time
-            #if self.debug:
-            #    print(str(now) + " : " + str(read_value))
-            #print("-" + read_value + "-")
+            #calc = float(now) - prev_time
             if read_value:
                 click = click + 1
                 sys.stdout.write(".")
                 sys.stdout.flush()
                 if self.debug:
                     print "*******************************************************************************************\r\n*******************************************************************************************\r\nCLICK!!!!!\r\n*******************************************************************************************\r\n*******************************************************************************************"
-            end_process_time = time.time()
-            prev_time = float(now)
-            # if ( (read_value / 100) > 1 ) and ( calc > 0.02 ) and (read_value != prev_value) :
-            time.sleep(0.001)
+            #end_process_time = time.time()
+            #prev_time = float(now)
+
+            time.sleep(0.0001)
+
             end = time.time()
             calc_runtime = end - start
             total_runtime = total_runtime + calc_runtime
 
-            if self.debug:
-                print "Process run time: " + str(end_process_time - start)
-                print "Time Difference:  " + str(calc)
-                print str(now) + " : " + str(read_value)
-                print "Total Runtime: " + str(total_runtime)
-                print "+++++++++++++++++++++++++++++++++++++++++++"
-        meter_meters_width = self.meter_radius * 3.14
+            #if self.debug:
+                #print "Process run time: " + str(end_process_time - start)
+                #print "Time Difference:  " + str(calc)
+                #print str(now) + " : " + str(read_value)
+        print "Total Runtime: " + str(total_runtime)
+                #print "+++++++++++++++++++++++++++++++++++++++++++"
 
-        clicks_per_second = click / total_runtime
+        ft_min = self.circumference_ft * ((click / 2) * 4)
+        ft_hr = ft_min * 60
+        milesPH = ft_hr / 5280
+        metersPS = milesPH * 0.44704
+
+        '''
+        meter_meters_width = 
+
+        clicks_per_second = (click / 2) / total_runtime
         rps = clicks_per_second / 2
         milesPH = (meter_meters_width * rps) * 2.237
         metersPS = meter_meters_width * rps
+        '''
         sys.stdout.write("\r\n")
         sys.stdout.flush()
         if self.verbose:
+            print("circumference: " + str(self.circumference))
+            print("circumference_ft: " + str(self.circumference_ft))
             print str(sample_length) + " Seconds of runtime is up."
-            print "There were " + str(click) + " Clicks detected. "
-            print str(clicks_per_second) + " Clicks a second average."
-            print str(rps) + " rotations per second"
+            print "There were " + str(click / 2) + " rotations detected. "
+            print str( ((click / 2) * 4) / 60 ) + " rotations a second average."
+            print str( ((click / 2) * 4)) + " rotations per minute"
             print "Maybe the m/s for the Anemometer: " + str(metersPS) + " ?"
             print "MPH: " + str(milesPH)
+
         return milesPH, metersPS

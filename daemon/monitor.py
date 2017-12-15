@@ -36,12 +36,14 @@ except ValueError, e:
     print e.message
     sys.exit(1)
 
-
-if args['genhash']:
-    if args['f']:
-        print mon.genhash()
-    else:
-        print mon.get_station_hash()
+try:
+    if args['genhash']:
+        if args['f']:
+            print mon.genhash()
+        else:
+            print mon.get_station_hash()
+except:
+    print("No need to generate a new hash..")
 
 while 1: #lets start the main loop!
     if mon.debug:
@@ -52,6 +54,7 @@ while 1: #lets start the main loop!
         mon.loop_int = mon.loop_int + 1  #syntax parser says it can be shorter, but screw it, i want to know what its doing and its only what ~100k of text or am i too drunk to math?
 
         if args.daemon is not None:
+            print("Sleeping for " + str(mon.sleep_time) + " Seconds.")
             time.sleep(mon.sleep_time) #int(settings['sleep_time']))
         else:
             sys.exit(0)

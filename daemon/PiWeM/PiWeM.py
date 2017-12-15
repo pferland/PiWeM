@@ -174,7 +174,8 @@ class PIWEM:
             if self.verbose:
                 self.conn.execute("SHOW VARIABLES LIKE '%version%'")
                 ret = self.conn.fetchall()
-                pprint(ret)
+                if self.debug:
+                    pprint(ret)
             # Check for and/or generate station hash and write it to a file.
             self.get_station_hash()
             self.get_station_key()
@@ -182,7 +183,7 @@ class PIWEM:
                 print "Station Hash: " + self.station_hash
                 print "Station Key: " + self.station_key
         self.loop_int = 0
-        self.sleep_time = float(settings['sleep_time'])
+        self.sleep_time = int(settings['sleep_time'])
         self.power_monitor_device = settings['power_monitor_device']
 
         self.INA219_address = int(settings['ina219_address'], 16)
