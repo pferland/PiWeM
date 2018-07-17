@@ -24,12 +24,11 @@ text_color = (int(text_color_split[0]), int(text_color_split[1]), int(text_color
 
 mon = PiWeM.PIWEM(settings=settings)
 while 1:
-    #time.sleep(1)
+    # time.sleep(1)
     print("|--------------------------------------------|")
     ret = mon.wind.getWindSpeedData()
 
-
-    #mon.get_data_trigger()
+    # mon.get_data_trigger()
     '''
     print("Photo Resistor: " + str(mon.sensor_values.photoresistor))
     print("Pressure: " + str(mon.sensor_values.bmp085.pressure))
