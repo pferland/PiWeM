@@ -106,7 +106,7 @@ Station Sample Station Name has the following key assigned to it: MC43MzIzNDQwMC
 Done!
 
   Support:
-		Go to the Random Intervals section of these forums http://forum.techidiots.net/forum/
+		Create an issue on GitHub. https://github.com/pferland/PiWeM/issues
 		
     Enjoy!
         The RanInt Dev team
