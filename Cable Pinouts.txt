@@ -1,6 +1,6 @@
 1 - brown (center)	- Vin					- red
 2 - blue/white		- I2C SDA				- Blue
-3 - blue			- I2C CLK				- White
+3 - blue		- I2C CLK				- White
 4 - orange/white	- GPIO1(Wind1)			- green		- 6
 5 - orange			- GPOI2(Wind2)			- green		- 13
 6 - brown/white		- Gnd					- Black
