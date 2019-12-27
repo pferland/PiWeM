@@ -2,7 +2,7 @@
 2 - blue/white		- I2C SDA				- Blue
 3 - blue		- I2C CLK				- White
 4 - orange/white	- GPIO1(Wind1)				- green		- 6
-5 - orange		- GPOI2(Wind2)			  - green		- 13
+5 - orange		- GPOI2(Wind2)			    - green		- 13
 6 - brown/white		- Gnd					- Black
-7 - green		- GPIO(DHT11)			  - yellow	- 19
+7 - green		- GPIO(DHT11)			    - yellow	- 19
 8 - green/white		- GPIO(Rain Detector)			- yellow	- 26
