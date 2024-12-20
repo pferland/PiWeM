@@ -1,0 +1,62 @@
+body {
+    background-color: #add8e6;
+}
+
+.style1 {
+    text-align: center;
+}
+
+td.contents {
+    background-color: cadetblue;
+}
+
+td.body {
+    background-color: #00aaaa;
+}
+
+td.sub_header {
+    background-color: #7d87ff;
+}
+
+tr.station_header {
+    background-color: #7d87ff;
+}
+
+tr.sensor_header {
+    background-color: #007dff;
+}
+
+tr.sensor_values {
+    background-color: aliceblue;
+}
+
+td {
+    border-right-style: solid;
+    border-right-width: 1px;
+    border-left-style: solid;
+    border-left-width: 1px;
+    border-top-style: solid;
+    border-top-width: 1px;
+    border-bottom-style: solid;
+    border-bottom-width: 1px;
+}
+tr {
+    border-right-style: solid;
+    border-right-width: 1px;
+    border-left-style: solid;
+    border-left-width: 1px;
+    border-top-style: solid;
+    border-top-width: 1px;
+    border-bottom-style: solid;
+    border-bottom-width: 1px;
+}
+table {
+    border-right-style: solid;
+    border-right-width: 1px;
+    border-left-style: solid;
+    border-left-width: 1px;
+    border-top-style: solid;
+    border-top-width: 1px;
+    border-bottom-style: solid;
+    border-bottom-width: 1px;
+}

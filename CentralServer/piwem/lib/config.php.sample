@@ -1,0 +1,16 @@
+<?php
+error_reporting(E_ALL || E_STRICT);
+
+global $WWWconfig;
+#SQL Settings
+$WWWconfig['SQL']['host']    =  "localhost";
+$WWWconfig['SQL']['srvc']    =  "mysql";
+$WWWconfig['SQL']['db_user'] =  "root";
+$WWWconfig['SQL']['db_pwd']  =  "toor";
+$WWWconfig['SQL']['db']      =  "weather_data";
+$WWWconfig['SQL']['collate'] =  "utf8";
+$WWWconfig['SQL']['engine']  =  "innodb";
+
+#HTTP settings
+$WWWconfig['http']['smarty_path']       =   '/usr/share/php/smarty/libs/';
+$WWWconfig['http']['width']             =   7;
