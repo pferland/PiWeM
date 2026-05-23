@@ -1,8 +1,7 @@
 from INA219 import INA219
 from INA3221 import INA3221
 
-
-class power:
+class Power:
     def __init__(self, sql_db, power_monitor, power_monitor_device, INA219_address, INA3221_address, debug, verbose):
         self.db = sql_db
         self.conn = self.db.cursor()
@@ -26,12 +25,12 @@ class power:
                 Power_mW = Voltage_V * Current_mA
 
                 if self.verbose:
-                    print "------------------------------"
-                    print "Channel: " + str(i)
-                    print "shunt:   %.2fmV\r\n" \
+                    print("------------------------------")
+                    print("Channel: " + str(i))
+                    print("shunt:   %.2fmV\r\n" \
                           "bus:     %.2fV\r\n" \
                           "current: %dmA\r\n" \
-                          "power:   %.2fmW" % (ShuntVoltage_mV, Voltage_V, Current_mA, Power_mW)
+                          "power:   %.2fmW" % (ShuntVoltage_mV, Voltage_V, Current_mA, Power_mW))
                 data_array.append((i, Current_mA, Power_mW, ShuntVoltage_mV, Voltage_V))
         else:
             ina = INA219.INA219(address=self.INA219_address)
@@ -40,11 +39,11 @@ class power:
             Current_mA = ina.getCurrent_mA() * -1
             Power_mW = Voltage_V * Current_mA
             if self.verbose:
-                print "------------------------------"
-                print "shunt:   %.2fmV\r\n" \
+                print("------------------------------")
+                print("shunt:   %.2fmV\r\n" \
                       "bus:     %.2fV\r\n" \
                       "current: %dmA\r\n" \
-                      "power:   %.2fmW" % (ShuntVoltage_mV, Voltage_V, Current_mA, Power_mW)
+                      "power:   %.2fmW" % (ShuntVoltage_mV, Voltage_V, Current_mA, Power_mW))
             data_array.append((0, Current_mA, Power_mW, ShuntVoltage_mV, Voltage_V))
 
         return data_array

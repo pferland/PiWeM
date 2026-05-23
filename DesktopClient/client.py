@@ -3,7 +3,7 @@ from PyQt4 import QtGui, QtCore
 class Window(QtGui.QMainWindow):
 
     def __init__(self):
-        super(Window, self).__init__()
+        super().__init__()
         self.setGeometry(50, 50, 500, 300)
         self.setWindowTitle("PiWeM QT4 Client")
         #self.setWindowIcon(QtGui.QIcon('pythonlogo.png'))
@@ -44,7 +44,7 @@ class Window(QtGui.QMainWindow):
     def closeEvent(self, event):
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.setValue("windowState", self.saveState())
-        super(Window, self).closeEvent(event)
+        super().closeEvent(event)
 
     def close_application(self):
         print("Well there you go smart guy...")

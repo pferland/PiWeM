@@ -1,4 +1,4 @@
-class power_data(object):
+class power_data:
     def __init__(self):
         self.voltage        = 0
         self.current_mA     = 0

@@ -18,7 +18,7 @@
 --
 -- Current Database: `weather_data`
 --
-drop database `weather_data`;
+drop database IF EXISTS `weather_data`;
 
 CREATE DATABASE /*!32312 IF NOT EXISTS*/ `weather_data` /*!40100 DEFAULT CHARACTER SET utf8 */;
 

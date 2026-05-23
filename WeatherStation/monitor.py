@@ -7,7 +7,7 @@ import argparse
 # Setup Argument Parser
 parser = argparse.ArgumentParser()
 parser = argparse.ArgumentParser(prog='Rasperry Pi Weather Monitor (PiWeM) ')
-parser.add_argument('--version', action='version', version='%(prog)s 1.0')
+parser.add_argument('--version', action='version', version='%(prog)s 2.0')
 
 parser.add_argument("--daemon", help="Run as a Daemon", action='store_true')
 parser.add_argument("-d", help="Run as a Daemon", action='store_true')
@@ -32,7 +32,7 @@ text_color = tuple(settings['text_color'].split(",")) # Same for the Text color 
 try:
     mon = PiWeM.PIWEM(settings=settings)
 
-except IOError as e:
+except OSError as e:
     print(e.args)
     print(e.errno)
     print(e.strerror)
@@ -72,7 +72,7 @@ while 1:
         else:
             sys.exit(0)
 
-    except IOError as e:  # If Sensor Data return is a Failure, do not increment, and exit. there is an error....
+    except OSError as e:  # If Sensor Data return is a Failure, do not increment, and exit. there is an error....
         print(e.args)
         print(e.errno)
         print(e.filename)

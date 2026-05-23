@@ -42,13 +42,13 @@ if use_ina3221:
             Power_mW        = Voltage_V * Current_mA
 
 
-            print "------------------------------"
-            print "Channel: " + str(i)
-            print timestamp
-            print "shunt:   %.2fmV\r\n" \
+            print("------------------------------")
+            print("Channel: " + str(i))
+            print(timestamp)
+            print("shunt:   %.2fmV\r\n" \
                   "bus:     %.2fV\r\n" \
                   "current: %dmA\r\n" \
-                  "power:   %.2fmW" % ( ShuntVoltage_mV, Voltage_V, Current_mA, Power_mW )
+                  "power:   %.2fmW" % ( ShuntVoltage_mV, Voltage_V, Current_mA, Power_mW ))
 
             mon.conn.executemany("INSERT INTO weather_data.power_monitor ( station_hash, `channel`, `shunt_mV`, `voltage`, `current_mA`, `power_mW`, `timestamp` ) VALUES ( %s, %s, %s, %s, %s, %s, %s) ",
             [
@@ -65,12 +65,12 @@ else:
         Current_mA      = ina.getCurrent_mA()*-1
         Power_mW        = Voltage_V * Current_mA
 
-        print "------------------------------"
-        print timestamp
-        print "shunt:   %.2fmV\r\n" \
+        print("------------------------------")
+        print(timestamp)
+        print("shunt:   %.2fmV\r\n" \
               "bus:     %.2fV\r\n" \
               "current: %dmA\r\n" \
-              "power:   %.2fmW" % ( ShuntVoltage_mV, Voltage_V, Current_mA, Power_mW )
+              "power:   %.2fmW" % ( ShuntVoltage_mV, Voltage_V, Current_mA, Power_mW ))
 
         mon.conn.executemany("INSERT INTO weather_data.power_monitor ( station_hash, `shunt_mV`, `voltage`, `current_mA`, `power_mW`, `timestamp` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
         [

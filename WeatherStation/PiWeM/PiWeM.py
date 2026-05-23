@@ -1,7 +1,4 @@
 from pprint import pprint
-from PIL import Image
-from PIL import ImageDraw
-from PIL import ImageFont
 
 import RPi.GPIO as GPIO
 import datetime
@@ -12,13 +9,12 @@ import socket
 import sys
 import uuid
 import urllib
-import urllib2
+import urllib.request
+import urllib.error
+import urllib.parse
 
-# PiWeM Packages
-import Payload
-from SensorData import SensorValues
-from wind import wind
-from power import power
+from PiWeM import Payload
+from PiWeM.SensorData import SensorValues, bmp085_data, bmp180_data, bmp280_data, dht22_data, dht11_data,  am2302_data
 
 # Yeah.. Yeah.. I know...
 global sensor
@@ -47,8 +43,11 @@ class PIWEM:
     # write values to the console
     verbose     = 0
 
-    #used to get much more data about what is happening, really only needed if you are fucking around with the code. Might get some nifty information ;-)
+    #used to get much more data about what == happening, really only needed if you are fucking around with the code. Might get some nifty information ;-)
     debug       = 0
+
+    # Need an approx Alt to get real Peasure value
+    elevation_meters = 150
 
     #Enable or disables devices.
     pcf8591_enabled             = 0
@@ -61,7 +60,7 @@ class PIWEM:
     thermistor_enabled          = 0
     analog_temp_sensor_enabled  = 0
     photoresistor_enabled       = 0
-    camera_enabled              = 0
+    #camera_enabled              = 0
 
     # GPIO Pins for devices
     dht11_pin   = 0
@@ -83,15 +82,16 @@ class PIWEM:
     analog_wind_vane_pin           = 0
 
 
+    #Camera code == going to be disabled for the V2 re-write. Maybe I will add it back in, but It might just be removed all together.
     # RasPi camera settings, defaults should work for both v1 and v2 of the camera
-    camera              = None
-    brightness          = 50
-    resolution          = (1920,1080)
-    jpeg_quality        = 100
-    text_font           = ""
-    text_color          = (255,0,0)
-    output_path         = ""
-    tmp_dir             = ""
+    #camera              = None
+    #brightness          = 50
+    #resolution          = (1920,1080)
+    #jpeg_quality        = 100
+    #text_font           = ""
+    #text_color          = (255,0,0)
+    #output_path         = ""
+    #tmp_dir             = ""
 
     #Init values for the SQL connection only need the DB and conn, others are not needed to be static, can just grab them again from the settings var.
     db   = None
@@ -144,7 +144,7 @@ class PIWEM:
         self.humidity_flag = settings['humidity_flag']
 
         self.power_monitor = int(settings['power_monitor'])
-        self.camera_enabled = int(settings['camera_enabled'])
+        #self.camera_enabled = int(settings['camera_enabled'])
         self.bmp085_enabled = int(settings['bmp085_enabled'])
         self.bmp180_enabled = int(settings['bmp180_enabled'])
         self.bmp280_enabled = int(settings['bmp280_enabled'])
@@ -160,13 +160,13 @@ class PIWEM:
         self.wind_enabled = int(settings['wind_enabled'])
         self.anemometer_sensor_diameter = float(settings['anemometer_sensor_diameter'])
         if self.debug:
-            print "-----------------------------"
+            print("-----------------------------")
             pprint(settings)
-            print "-----------------------------"
+            print("-----------------------------")
 
         if self.localstorage or self.bufferlocally:
             if self.verbose:
-                print "Open MySQL Connection.."
+                print("Open MySQL Connection..")
 
             import MySQLdb
             self.db = MySQLdb.connect(host=settings['sql_host'], user=settings['sql_user'], passwd=settings['sql_password'])
@@ -180,8 +180,8 @@ class PIWEM:
             self.get_station_hash()
             self.get_station_key()
             if self.debug:
-                print "Station Hash: " + self.station_hash
-                print "Station Key: " + self.station_key
+                print("Station Hash: " + self.station_hash)
+                print("Station Key: " + self.station_key)
         self.loop_int = 0
         self.sleep_time = int(settings['sleep_time'])
         self.power_monitor_device = settings['power_monitor_device']
@@ -223,10 +223,6 @@ class PIWEM:
         if self.localstorage or self.bufferlocally:
             self.update_station_sensors()
 
-        self.power = power.power(sql_db=MySQLdb.connect(host=settings['sql_host'], user=settings['sql_user'], passwd=settings['sql_password']),
-                                 power_monitor=self.power_monitor, power_monitor_device=self.power_monitor_device,
-                                 INA219_address=self.INA219_address, INA3221_address=self.INA3221_address, debug=self.debug, verbose=self.verbose)
-        self.wind = wind.wind(anemometer_sensor_diameter=self.anemometer_sensor_diameter, analog_wind_vane_pin=self.analog_wind_vane_pin, analog_wind_anemometer_pin=self.analog_wind_anemometer_pin, debug=0, verbose=self.verbose)
         if self.get_station_key() == "":
             if self.verbose:
                 print("Updating Station Key")
@@ -239,7 +235,7 @@ class PIWEM:
     def get_station_hash(self):
         if not os.path.isfile("station_hash.txt"):
             if self.verbose:
-                print "station_hash.txt did not exist. needed to generate a Station Hash. You will need to register"
+                print("station_hash.txt did not exist. needed to generate a Station Hash. You will need to register")
             station_hash = self.genhash()
             self.station_hash = station_hash
         else:
@@ -249,8 +245,15 @@ class PIWEM:
         return self.station_hash
 
     def get_station_key(self):
-        self.conn.execute("select `station_key` from weather_data.Stations where station_hash = %s", self.station_hash)
+        self.conn.execute("select `station_key` from weather_data.Stations where station_hash = %s", (self.station_hash,))
         ret = self.conn.fetchall()
+        if not ret:
+            print("\n" + "=" * 50)
+            print(" ERROR: This Raspberry Pi station is not registered.")
+            print(f" Please register the station hash '{self.station_hash}' in the database.")
+            print("=" * 50 + "\n")
+            sys.exit(1)
+
         self.station_key = ret[0][0]
         return self.station_key
 
@@ -280,33 +283,33 @@ class PIWEM:
         self.setup_dht22(pin=int(self.dht22_pin))
         self.setup_am2302(pin=int(self.am2302_pin))
 
-        self.setup_bmp085(address=self.bmp085_address)  #  Low (ground) on sda for the BMP is 0x76, High is 0x77
+        self.setup_bmp085(address=self.bmp085_address)  #  Low (ground) on sda for the BMP == 0x76, High == 0x77
         self.setup_bmp180(address=self.bmp180_address)  #  Temp til I get a 180 to test with.)
         self.setup_bmp280(address=self.bmp280_address)
 
-        self.setup_pcf8591(address=self.pcf8591_address)  # Default address for the PCF8591 is 0x48, so its hardcoded, but you can set it to what ever you want with the address variable
-        self.setup_camera()
+        self.setup_pcf8591(address=self.pcf8591_address)  # Default address for the PCF8591 == 0x48, so its hardcoded, but you can set it to what ever you want with the address variable
+        #self.setup_camera()
 
     def insert_station_sensors(self):
         timestamp = str(datetime.datetime.utcnow())
 
         if self.debug:
-            print "Values to write to sensor tables:"
-            print (self.station_hash, bool(self.dht11_enabled), bool(self.dht22_enabled), bool(self.bmp085_enabled), bool(self.bmp180_enabled), bool(self.bmp280_enabled), bool(self.thermistor_enabled), bool(self.analog_temp_sensor_enabled), bool(self.photoresistor_enabled), bool(self.camera_enabled), timestamp)
-            print ""
-        self.conn.executemany("INSERT INTO `weather_data`.`Station_sensors` (`station_hash`, `dht11`, `dht22`, `bmp085`, `bmp180`, `bmp280`, `thermistor`, `analog_temp_sensor`, `photoresistor`, `camera`, `timestamp`)  "
+            print("Values to write to sensor tables:")
+            print((self.station_hash, bool(self.dht11_enabled), bool(self.dht22_enabled), bool(self.bmp085_enabled), bool(self.bmp180_enabled), bool(self.bmp280_enabled), bool(self.thermistor_enabled), bool(self.analog_temp_sensor_enabled), bool(self.photoresistor_enabled), timestamp))
+            print("")
+        self.conn.executemany("INSERT INTO `weather_data`.`Station_sensors` (`station_hash`, `dht11`, `dht22`, `bmp085`, `bmp180`, `bmp280`, `thermistor`, `analog_temp_sensor`, `photoresistor`, `timestamp`)  "
                               "VALUES ( %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ",
         [
-            (self.station_hash, bool(self.dht11_enabled), bool(self.dht22_enabled), bool(self.bmp085_enabled), bool(self.bmp180_enabled), bool(self.bmp280_enabled), bool(self.thermistor_enabled), bool(self.analog_temp_sensor_enabled), bool(self.photoresistor_enabled), bool(self.camera_enabled), timestamp),
+            (self.station_hash, bool(self.dht11_enabled), bool(self.dht22_enabled), bool(self.bmp085_enabled), bool(self.bmp180_enabled), bool(self.bmp280_enabled), bool(self.thermistor_enabled), bool(self.analog_temp_sensor_enabled), bool(self.photoresistor_enabled), timestamp),
         ])
         self.db.commit()
         return 0
 
     def update_station_sensors(self):
-        self.conn.executemany("UPDATE weather_data.Station_sensors SET bmp085 = %s, bmp180 = %s, bmp280 = %s, dht11 = %s, dht22 = %s, am2302 = %s, thermistor = %s, analog_temp_sensor = %s, photoresistor = %s, camera = %s "
+        self.conn.executemany("UPDATE weather_data.Station_sensors SET bmp085 = %s, bmp180 = %s, bmp280 = %s, dht11 = %s, dht22 = %s, am2302 = %s, thermistor = %s, analog_temp_sensor = %s, photoresistor = %s "
                               "WHERE station_hash = %s ",
         [
-            (self.bmp085_enabled, self.bmp180_enabled, self.bmp280_enabled, self.dht11_enabled, self.dht22_enabled, self.am2302_enabled, self.thermistor_enabled, self.analog_temp_sensor_enabled, self.photoresistor_enabled, self.camera_enabled, self.station_hash),
+            (self.bmp085_enabled, self.bmp180_enabled, self.bmp280_enabled, self.dht11_enabled, self.dht22_enabled, self.am2302_enabled, self.thermistor_enabled, self.analog_temp_sensor_enabled, self.photoresistor_enabled,  self.station_hash),
         ])
         self.db.commit()
         return 0
@@ -351,82 +354,82 @@ class PIWEM:
 
     def setup_dht11(self, pin):
         if self.dht11_enabled:
-            from dht11 import dht11
+            from dht11 import DHT11
             self.dht11_pin      = pin
-            self.dht11_instance = dht11.DHT11(pin=self.dht11_pin)
+            self.dht11_instance = DHT11(pin=self.dht11_pin)
         return 0
 
     def setup_dht22(self, pin):
         if self.dht22_enabled:
-            from dht11 import dht11
+            from dht11 import DHT11
             self.dht22_pin = pin
-            self.dht22_instance = dht11.DHT11(pin=self.dht22_pin)   # will add after the dht22 order comes in :/ ...
+            self.dht22_instance = DHT11(pin=self.dht22_pin)   # will add after the dht22 order comes in :/ ...
         return 0
 
     def setup_am2302(self, pin):
         if self.am2302_enabled:
-            from dht11 import dht11
+            from dht11 import DHT11
             self.am2302_pin = pin
-            self.am2302_instance = dht11.DHT11(pin=self.am2302_pin)
+            self.am2302_instance = DHT11(pin=self.am2302_pin)
             #self.am2302_instance = DHT   # will add after the dht22 order comes in :/ ...
         return 0
 
-    def setup_camera(self):
-        if self.camera_enabled:
-            import picamera
-            self.camera             = picamera.PiCamera()
-            self.camera.rotation    = self.rotation
-            self.camera.brightness  = self.brightness
-            self.camera.resolution  = self.resolution
-        return 0
+    #def setup_camera(self):
+    #    if self.camera_enabled:
+    #        import picamera
+    #        self.camera             = picamera.PiCamera()
+    #        self.camera.rotation    = self.rotation
+    #        self.camera.brightness  = self.brightness
+    #        self.camera.resolution  = self.resolution
+    #    return 0
 
     def insert_data(self, buffered=0):
         if self.debug:
-            print "--------- Insert Data values for self.sensor_values.*  ------------"
-            print ""
-            print "BMP085 Temp/Pressure"
-            print self.sensor_values.bmp085.temp
-            print self.sensor_values.bmp085.pressure
+            print("--------- Insert Data values for self.sensor_values.*  ------------")
+            print("")
+            print("BMP085 Temp/Pressure")
+            print(self.sensor_values.bmp085.temp)
+            print(self.sensor_values.bmp085.pressure)
 
-            print "BMP180 Temp/Pressure"
-            print self.sensor_values.bmp180.temp
-            print self.sensor_values.bmp180.pressure
+            print("BMP180 Temp/Pressure")
+            print(self.sensor_values.bmp180.temp)
+            print(self.sensor_values.bmp180.pressure)
 
-            print "BMP280 Temp/Pressure"
-            print self.sensor_values.bmp280.temp
-            print self.sensor_values.bmp280.pressure
+            print("BMP280 Temp/Pressure")
+            print(self.sensor_values.bmp280.temp)
+            print(self.sensor_values.bmp280.pressure)
 
-            print "DHT11 Temp/Humidty"
-            print self.sensor_values.dht11.temp
-            print self.sensor_values.dht11.humidity
+            print("DHT11 Temp/Humidty")
+            print(self.sensor_values.dht11.temp)
+            print(self.sensor_values.dht11.humidity)
 
-            print "DHT22 Temp/Humidty"
-            print self.sensor_values.dht22.temp
-            print self.sensor_values.dht22.humidity
+            print("DHT22 Temp/Humidty")
+            print(self.sensor_values.dht22.temp)
+            print(self.sensor_values.dht22.humidity)
 
-            print "Thermistor Temperature"
-            print self.sensor_values.thermistor
+            print("Thermistor Temperature")
+            print(self.sensor_values.thermistor)
 
-            print "Analog Temperature Sensor"
-            print self.sensor_values.analog_temp_sensor
+            print("Analog Temperature Sensor")
+            print(self.sensor_values.analog_temp_sensor)
 
-            print "Photoresistor"
-            print self.sensor_values.photoresistor
+            print("Photoresistor")
+            print(self.sensor_values.photoresistor)
 
-            print "Wind Speed"
-            print self.sensor_values.wind_speed
+            print("Wind Speed")
+            print(self.sensor_values.wind_speed)
 
-            print "Wind Direction"
-            print self.sensor_values.wind_direction
+            print("Wind Direction")
+            print(self.sensor_values.wind_direction)
 
-            print "Fetch Error Result Flag"
+            print("Fetch Error Result Flag")
             if self.sensor_values.fetch_error:
-                print self.sensor_values.fetch_error
-            print "-------------------------------------------------------------------"
+                print(self.sensor_values.fetch_error)
+            print("-------------------------------------------------------------------")
 
         if self.bmp085_enabled:
             if self.debug:
-                print "bmp085_enabled"
+                print("bmp085_enabled")
             self.conn.executemany("INSERT INTO weather_data.bmp085 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s, %s) ",
             [
             (self.sensor_values.bmp085.pressure, self.sensor_values.bmp085.temp[0], self.sensor_values.bmp085.temp[1], self.sensor_values.bmp085.altitude, self.station_hash, self.sensor_values.timestamp, buffered),
@@ -435,7 +438,7 @@ class PIWEM:
 
         if self.bmp180_enabled:
             if self.debug:
-                print "bmp180_enabled"
+                print("bmp180_enabled")
             self.conn.executemany("INSERT INTO weather_data.bmp180 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s, %s) ",
             [
             (self.sensor_values.bmp180.pressure, self.sensor_values.bmp180.temp[0], self.sensor_values.bmp180.temp[1], self.sensor_values.bmp180.altitude, self.station_hash, self.sensor_values.timestamp, buffered),
@@ -444,9 +447,9 @@ class PIWEM:
 
         if self.bmp280_enabled:
             if self.debug:
-                print "bmp280_enabled"
-                print self.sensor_values.bmp280.pressure
-                print self.sensor_values.bmp280.temp
+                print("bmp280_enabled")
+                print(self.sensor_values.bmp280.pressure)
+                print(self.sensor_values.bmp280.temp)
             self.conn.executemany("INSERT INTO weather_data.bmp280 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s, %s) ",
             [
             (self.sensor_values.bmp280.pressure, self.sensor_values.bmp280.temp[0], self.sensor_values.bmp280.temp[1], self.sensor_values.bmp280.altitude, self.station_hash, self.sensor_values.timestamp, buffered),
@@ -455,7 +458,7 @@ class PIWEM:
 
         if self.dht11_enabled:
             if self.debug:
-                print "dht11_enabled"
+                print("dht11_enabled")
             self.conn.executemany("INSERT INTO weather_data.dht11 ( c_temp, f_temp, humidity, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
             [
             (self.sensor_values.dht11.temp[0], self.sensor_values.dht11.temp[1], self.sensor_values.dht11.humidity, self.station_hash, self.sensor_values.timestamp, buffered),
@@ -464,7 +467,7 @@ class PIWEM:
 
         if self.dht22_enabled:
             if self.debug:
-                print "dht22_enabled"
+                print("dht22_enabled")
             self.conn.executemany("INSERT INTO weather_data.dht22 ( c_temp, f_temp, humidity, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
             [
             (self.sensor_values.dht22.temp[0], self.sensor_values.dht22.temp[1], self.sensor_values.dht22.humidity, self.station_hash, self.sensor_values.timestamp, buffered),
@@ -473,7 +476,7 @@ class PIWEM:
 
         if self.thermistor_enabled:
             if self.debug:
-                print "thermistor_enabled"
+                print("thermistor_enabled")
             self.conn.executemany("INSERT INTO weather_data.thermistor ( c_temp, f_temp, station_hash, `timestamp`, `buffered_data` ) VALUES (%s, %s, %s, %s, %s) ",
             [
             (self.sensor_values.thermistor[0], self.sensor_values.thermistor[1], self.station_hash, self.sensor_values.timestamp, buffered),
@@ -482,7 +485,7 @@ class PIWEM:
 
         if self.analog_temp_sensor_enabled:
             if self.debug:
-                print "analog_temp_sensor_enabled"
+                print("analog_temp_sensor_enabled")
             self.conn.executemany("INSERT INTO weather_data.analog_temp_sensor ( c_temp, f_temp, station_hash, `timestamp`, `buffered_data` ) VALUES (%s, %s, %s, %s, %s) ",
             [
             (self.sensor_values.analog_temp_sensor[0], self.sensor_values.analog_temp_sensor[1], self.station_hash, self.sensor_values.timestamp, buffered),
@@ -491,7 +494,7 @@ class PIWEM:
 
         if self.photoresistor_enabled:
             if self.debug:
-                print "photoresistor_enabled"
+                print("photoresistor_enabled")
             self.conn.executemany("INSERT INTO weather_data.photoresistor ( `photolevel`, `station_hash`, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s) ",
             [
                 (self.sensor_values.photoresistor, self.station_hash, self.sensor_values.timestamp, buffered),
@@ -500,7 +503,7 @@ class PIWEM:
 
         if self.analog_wind_anemometer_enabled:
             if self.debug:
-                print "analog_wind_anemometer_enabled"
+                print("analog_wind_anemometer_enabled")
             self.conn.executemany("INSERT INTO weather_data.wind_speed ( `miles_per_hour`, `meters_per_second`, `station_hash`, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s) ",
             [
                 (self.sensor_values.wind_speed[0], self.sensor_values.wind_speed[1], self.station_hash, self.sensor_values.timestamp, buffered),
@@ -509,7 +512,7 @@ class PIWEM:
 
         if self.analog_wind_vane_enabled:
             if self.debug:
-                print "analog_wind_vane_enabled"
+                print("analog_wind_vane_enabled")
             self.conn.executemany("INSERT INTO weather_data.wind_direction ( `direction`, `station_hash`, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s) ",
             [
                 (self.sensor_values.wind_direction, self.station_hash, self.sensor_values.timestamp, buffered),
@@ -518,7 +521,7 @@ class PIWEM:
 
         if self.power_monitor:
             if self.debug:
-                print "power monitor data"
+                print("power monitor data")
 
             insert_array = []
             for i in range(len(self.sensor_values.power)):
@@ -542,13 +545,13 @@ class PIWEM:
         if self.am2302_enabled:
             result = self.am2302_instance.read()
             f_temp = ((int(result.temperature) * 9)/5)+32
-            print result
-            if result.humidity is 0:
-                print "Error fetching DHT Data"
+            print(result)
+            if result.humidity == 0:
+                print("Error fetching DHT Data")
                 humidity_results = 0
             else:
                 humidity_results = result.humidity
-            if result.temperature is 0:
+            if result.temperature == 0:
                 temp_results = (0, 0)
                 self.sensor_values.fetch_error.append("AM2302 fetch error")
             else:
@@ -560,13 +563,13 @@ class PIWEM:
         if self.dht11_enabled:
             result = self.dht11_instance.read()
             f_temp = ((int(result.temperature) * 9)/5)+32
-            if result.humidity is 0:
+            if result.humidity == 0:
                 if self.debug:
-                    print "Error fetching DHT Data"
+                    print("Error fetching DHT Data")
                 humidity_results = 0
             else:
                 humidity_results = result.humidity
-            if result.temperature is 0:
+            if result.temperature == 0:
                 temp_results = (0, 0)
                 self.sensor_values.fetch_error.append("DHT11 fetch error")
             else:
@@ -578,13 +581,13 @@ class PIWEM:
         if self.dht11_enabled:
             result = self.dht11_instance.read()
             f_temp = ((int(result.temperature) * 9)/5)+32
-            if result.humidity is 0:
+            if result.humidity == 0:
                 if self.debug:
-                    print "Error fetching DHT Data"
+                    print("Error fetching DHT Data")
                 humidity_results = 0
             else:
                 humidity_results = result.humidity
-            if result.temperature is 0:
+            if result.temperature == 0:
                 temp_results = (0, 0)
                 self.sensor_values.fetch_error.append("DHT11 fetch error")
             else:
@@ -595,12 +598,12 @@ class PIWEM:
     def get_bmp085_data(self):
         if self.bmp085_enabled:
             pressure = self.bmp085_instance.read_pressure()       # Read pressure to variable pressure
-            if pressure is 0:
+            if pressure == 0:
                 self.sensor_values.fetch_error.append("BMP085 pressure fetch error")
                 raise IOError("Fetching Data Error BMP085 Pressure...")
 
             temp = self.bmp085_instance.read_temperature()        # Read temperature to variable temp
-            if temp is 0:
+            if temp == 0:
                 self.sensor_values.fetch_error.append("bmp085 temperature fetch error")
                 raise IOError("Fetching Data Error BMP085 Temperature...")
 
@@ -614,25 +617,29 @@ class PIWEM:
     def get_bmp280_data(self):
         if self.bmp280_enabled:
             data = self.bmp280_instance.read()
-            if data[0] is 0:
+            if data[0] == 0:
                 raise IOError("BMP280 did not return any valid data.")
             return data
+        return 0
 
     def get_bmp180_data(self):
         if self.bmp180_enabled:
-            data = self.bmp180_instance.read()
-            if data[0] is 0:
-                raise IOError("BMP180 did not return any valid data.")
-            return data
+            self.sensor_values.bmp180.pressure = self.bmp180_instance.read_pressure()
+            self.sensor_values.bmp180.altitude = self.bmp180_instance.read_altitude()
+            self.sensor_values.bmp180.temperature = self.bmp180_instance.read_temperature()
+            self.sensor_values.bmp180.raw_temp = self.bmp180_instance.read_raw_temp()
+            self.sensor_values.bmp180.raw_pressure = self.bmp180_instance.read_raw_pressure()
+            self.sensor_values.bmp180.sealevel_pressure = self.bmp180_instance.read_sealevel_pressure()
+        return 0
 
     def get_thermistor_temp_data(self):   # Get Data from the Thermistor
         if self.thermistor_enabled:
             if self.debug:
-                print "Thermistor Channel: "+ str(self.thermistor_channel)
+                print("Thermistor Channel: "+ str(self.thermistor_channel))
             analogVal = self.pcf8591_instance.read(self.thermistor_channel)
             if self.debug:
-                print "Analog Value for Thermistor: " + str(analogVal)
-            if analogVal is 255:
+                print("Analog Value for Thermistor: " + str(analogVal))
+            if analogVal == 255:
                 self.sensor_values.fetch_error.append("Thermistor result value error")
                 return 0, 0
             Vr = 5 * float(analogVal) / 255
@@ -641,7 +648,7 @@ class PIWEM:
             temp = temp - 273.15
             f_temp = ((int(temp) * 9)/5)+32
             if self.debug:
-                print "Celsius: " + str(temp) + " ||  Fahrenheit" + str(f_temp)
+                print("Celsius: " + str(temp) + " ||  Fahrenheit" + str(f_temp))
             #sys.exit(1)
             return temp, f_temp
         return 0
@@ -649,11 +656,11 @@ class PIWEM:
     def get_ats_temp_data(self):  # Get data from the Analog Temperature Sensor
         if self.analog_temp_sensor_enabled:
             if self.debug:
-                print "ATS Channel: "+ str(self.ats_channel)
+                print("ATS Channel: "+ str(self.ats_channel))
             analogVal = self.pcf8591_instance.read(self.ats_channel)
             if self.debug:
-                print "Analog Value for ATS: " + str(analogVal)
-            if analogVal is 255:
+                print("Analog Value for ATS: " + str(analogVal))
+            if analogVal == 255:
                 self.sensor_values.fetch_error.append("Analog Temperature Sensor value return error")
                 return 0, 0
             Vr = 5 * float(analogVal) / 255
@@ -662,16 +669,16 @@ class PIWEM:
             temp = temp - 273.15
             f_temp = ((int(temp) * 9)/5)+32
             if self.debug:
-                print "Analog C Temp: " + str(temp) + "    Analog F Temp" + str(f_temp)
+                print("Analog C Temp: " + str(temp) + "    Analog F Temp" + str(f_temp))
             #sys.exit(1)
             return temp, f_temp
         return 0
 
-    def get_sensor_data(self):  # Gather all of the sensors data
+    def get_sensor_data(self):  # Gather all the sensors data
 
         if self.verbose:
-                sys.stdout.write("Polling: ")
-                sys.stdout.flush()
+            sys.stdout.write("Polling: ")
+            sys.stdout.flush()
         self.sensor_values.timestamp = str(datetime.datetime.utcnow())
 
         if self.bmp085_enabled:
@@ -680,30 +687,29 @@ class PIWEM:
                 sys.stdout.flush()
             try:
                 bmp085_data = self.get_bmp085_data()
+                self.sensor_values.bmp085.temp = bmp085_data[0]
+                self.sensor_values.bmp085.pressure = bmp085_data[1]
+                self.sensor_values.bmp085.altitude = bmp085_data[2]
             except:
                 self.sensor_values.fetch_error.append(sys.exc_info()[0])
-
-            self.sensor_values.bmp085.temp = bmp085_data[0]
-            self.sensor_values.bmp085.pressure = bmp085_data[1]
-            self.sensor_values.bmp085.altitude = bmp085_data[2]
 
         if self.bmp180_enabled:
             if self.verbose:
                 sys.stdout.write(", bmp180")
             sys.stdout.flush()
             try:
-                bmp180_data = self.get_bmp180_data()
+                self.sensor_values.bmp180_data = self.get_bmp180_data()
+                self.sensor_values.bmp180.temp = bmp180_data[0]
+                self.sensor_values.bmp180.pressure = bmp180_data[1]
             except:
                 self.sensor_values.fetch_error.append(sys.exc_info()[0])
-            self.sensor_values.bmp180.temp = bmp180_data[0]
-            self.sensor_values.bmp180.pressure = bmp180_data[1]
 
         if self.bmp280_enabled:
             if self.verbose:
                 sys.stdout.write(", bmp280")
                 sys.stdout.flush()
             try:
-                bmp280_data = self.get_bmp280_data()
+                self.sensor_values.bmp280_data = self.get_bmp280_data()
             except:
                 self.sensor_values.fetch_error.append(sys.exc_info()[0])
             self.sensor_values.bmp280.temp = bmp280_data[0]
@@ -733,7 +739,7 @@ class PIWEM:
                 sys.stdout.write(", dht11")
                 sys.stdout.flush()
             try:
-                dht11_data = self.get_dht11_data()
+                self.sensor_values.dht11_data = self.get_dht11_data()
                 self.sensor_values.dht11.temp = dht11_data[0]
                 self.sensor_values.dht11.humidity = dht11_data[1]
             except:
@@ -744,7 +750,7 @@ class PIWEM:
                 sys.stdout.write(", dht22")
                 sys.stdout.flush()
             try:
-                dht22_data = self.get_dht22_data()
+                self.sensor_values.dht22_data = self.get_dht22_data()
                 self.sensor_values.dht22.temp = dht22_data[0]
                 self.sensor_values.dht22.humidity = dht22_data[1]
             except:
@@ -778,15 +784,6 @@ class PIWEM:
                 except:
                     self.sensor_values.fetch_error.append(sys.exc_info()[0])
 
-        if self.power_monitor:
-            power_values = self.power.getpower()
-            for i in range(len(power_values)):
-                self.sensor_values.power[i].channel = power_values[i][0]
-                self.sensor_values.power[i].current_mA = power_values[i][1]
-                self.sensor_values.power[i].power_mW = power_values[i][2]
-                self.sensor_values.power[i].shunt_mV = power_values[i][3]
-                self.sensor_values.power[i].voltage = power_values[i][4]
-
         if self.verbose:
             sys.stdout.write("\r\n")
             sys.stdout.flush()
@@ -797,16 +794,16 @@ class PIWEM:
         if self.photoresistor_enabled:
             photo_level = self.pcf8591_instance.read(self.photosresistor_channel)
             if self.debug:
-                print "PhotoLevel: " + str(photo_level)
+                print("PhotoLevel: " + str(photo_level))
             return photo_level
         return 0
 
-    def take_picture(self):   # well i think this is self-explanatory...
-        if self.debug:
-            print("Take Picture.")
-        image_name = self.tmp_dir + "Image_" + str(datetime.datetime.utcnow()) + ".jpg"
-        self.camera.capture(image_name)
-        return image_name
+    #def take_picture(self):   # well i think this == self-explanatory...
+    #    if self.debug:
+    #        print("Take Picture.")
+    #    image_name = self.tmp_dir + "Image_" + str(datetime.datetime.utcnow()) + ".jpg"
+    #    self.camera.capture(image_name)
+    #    return image_name
 
     def check_for_buffered_data(self):
         self.conn.executemany("SELECT buffered_data FROM `weather_data`.`Stations` WHERE `station_hash` = %s", [(self.station_hash),] )
@@ -816,32 +813,32 @@ class PIWEM:
 
     def get_data_trigger(self):  #Main loop trigger and handler for the daemon
         if self.verbose:
-            print "Get Sensor Data."
+            print("Get Sensor Data.")
         self.get_sensor_data()
 
 #        if not self.sensor_values.fetch_error:
         if self.localstorage:
             if self.verbose:
-                print "Save data locally."
+                print("Save data locally.")
             self.insert_data()
 
         if self.Upload_To_Central_Server:
             if self.verbose:
-                print "Upload data to the Central Server."
+                print("Upload data to the Central Server.")
             ret = self.upload_data()
-            if ret is -1:
+            if ret == -1:
                 if self.bufferlocally:
                     if self.verbose:
-                        print "Failed upload to " + self.PiWem_Central_Server + " Buffering data locally for now."
+                        print("Failed upload to " + self.PiWem_Central_Server + " Buffering data locally for now.")
                     self.set_buffered_data(1)
                     self.insert_data(1)
             else:
                 if self.verbose:
-                    print "Upload Successful!"
+                    print("Upload Successful!")
 
                 if self.check_for_buffered_data():
                     if self.verbose:
-                       print "Data buffered locally, uploading it to the central server since it is back online."
+                       print("Data buffered locally, uploading it to the central server since it == back online.")
                     self.upload_buffered_data()
                     self.set_buffered_data(0)
                     if not self.localstorage:
@@ -851,34 +848,34 @@ class PIWEM:
             self.weatherunderground()
 
         if self.verbose:
-            print "|-------------------------------------------|"
-            print 'TimeStamp:   {0}'.format(self.sensor_values.timestamp)
-            print 'CPU Temp:    {0:0.2f} C \ {1:0.2f} F'.format(float(self.get_cpu_temperature()), float( ( float(self.get_cpu_temperature()) * 1.8 ) +32) )
-            print 'Humidity:    {0}%'.format(getattr(self.sensor_values, self.humidity_flag).humidity)
-            print 'Temperature = {0:0.2f} C'.format(getattr(self.sensor_values, self.pressure_flag).temp[0])   # Print temperature in C
-            print 'Temperature = {0:0.2f} F'.format(getattr(self.sensor_values, self.pressure_flag).temp[1])             # Print temperature in F
-            print "\r\n"
+            print("|-------------------------------------------|")
+            print('TimeStamp:   {0}'.format(self.sensor_values.timestamp))
+            print('CPU Temp:    {0:0.2f} C / {1:0.2f} F'.format(float(self.get_cpu_temperature()), float( ( float(self.get_cpu_temperature()) * 1.8 ) +32) ))
+            print('Humidity:    {0}%'.format(getattr(self.sensor_values, self.humidity_flag).humidity))
+            print('Temperature = {0:0.2f} C'.format(getattr(self.sensor_values, self.pressure_flag).temp[0]))   # print(temperature in C
+            print('Temperature = {0:0.2f} F'.format(getattr(self.sensor_values, self.pressure_flag).temp[1]))             # print(temperature in F
+            print("\r\n")
             if self.bmp085_enabled:
-                print '085 Pressure = {0:0.4f} Pa'.format(self.sensor_values.bmp085.pressure)   # Print pressure in pascal
-                print '085 Pressure = {0:0.4f} mmhg'.format(self.sensor_values.bmp085.pressure / float(133.322368) )   # Print pressure in mm of Mercury
-                print '085 Pressure = {0:0.4f} atm'.format(self.sensor_values.bmp085.pressure / float(101325) )    # Print pressure in Atmospheres
-                print '085 Altitude = {0:0.4f} m'.format(self.sensor_values.bmp085.altitude)
-                print "\r\n"
+                print('085 Pressure = {0:0.4f} Pa'.format(self.sensor_values.bmp085.pressure))   # print(pressure in pascal
+                print('085 Pressure = {0:0.4f} mmhg'.format(self.sensor_values.bmp085.pressure / float(133.322368) ))   # print(pressure in mm of Mercury
+                print('085 Pressure = {0:0.4f} atm'.format(self.sensor_values.bmp085.pressure / float(101325) ) )   # print(pressure in Atmospheres
+                print('085 Altitude = {0:0.4f} m'.format(self.sensor_values.bmp085.altitude))
+                print("\r\n")
             if self.bmp180_enabled:
-                print '180 Pressure = {0:0.4f} Pa'.format(self.sensor_values.bmp180.pressure)   # Print pressure in pascal
-                print '180 Pressure = {0:0.4f} mmhg'.format(self.sensor_values.bmp180.pressure / float(133.322368) )   # Print pressure in mm of Mercury
-                print '180 Pressure = {0:0.4f} atm'.format(self.sensor_values.bmp180.pressure / float(101325) )    # Print pressure in Atmospheres
-                print '180 Altitude = {0:0.4f} m'.format(self.sensor_values.bmp180.altitude)
-                print "\r\n"
+                print('180 Pressure = {0:0.4f} Pa'.format(self.sensor_values.bmp180.pressure) )  # print(pressure in pascal
+                print('180 Pressure = {0:0.4f} mmhg'.format(self.sensor_values.bmp180.pressure / float(133.322368) ) )  # print(pressure in mm of Mercury
+                print('180 Pressure = {0:0.4f} atm'.format(self.sensor_values.bmp180.pressure / float(101325) ) )   # print(pressure in Atmospheres
+                print('180 Altitude = {0:0.4f} m'.format(self.sensor_values.bmp180.altitude))
+                print("\r\n")
             if self.bmp280_enabled:
-                print '280 Pressure = {0:0.4f} Pa'.format(self.sensor_values.bmp280.pressure)   # Print pressure in pascal
-                print '280 Pressure = {0:0.4f} mmhg'.format(self.sensor_values.bmp280.pressure / float(133.322368) )   # Print pressure in mm of Mercury
-                print '280 Pressure = {0:0.4f} atm'.format(self.sensor_values.bmp280.pressure / float(101325) )    # Print pressure in Atmospheres
-                print '280 Altitude = {0:0.4f} m'.format(self.sensor_values.bmp280.altitude)
-                print "\r\n"
+                print('280 Pressure = {0:0.4f} Pa'.format(self.sensor_values.bmp280.pressure))   # print(pressure in pascal
+                print('280 Pressure = {0:0.4f} mmhg'.format(self.sensor_values.bmp280.pressure / float(133.322368) ))   # print(pressure in mm of Mercury
+                print('280 Pressure = {0:0.4f} atm'.format(self.sensor_values.bmp280.pressure / float(101325) ) )   # print(pressure in Atmospheres
+                print('280 Altitude = {0:0.4f} m'.format(self.sensor_values.bmp280.altitude))
+                print("\r\n")
 
-            print 'Photolevel = {0} '.format(self.sensor_values.photoresistor)    # Print photoresistor levels Higher number is lower light levels
-            print ''
+            print('Photolevel = {0} '.format(self.sensor_values.photoresistor)  )  # print(photoresistor levels Higher number == lower light levels
+            print('')
             print("-------------------------- Wind Speed --------------------------")
             print("Miles Per Hour: " + str(self.sensor_values.wind_speed[0]))
             print("Meters Per Second: " + str(self.sensor_values.wind_speed[1]))
@@ -897,32 +894,32 @@ class PIWEM:
         if self.debug:
             pprint(vars(self.sensor_values))
 
-        if self.camera_enabled:
-            if self.verbose:
-                print "Start Picture capture."
-            image = self.take_picture()
-            img = Image.open( image)
-            print image
-            filename = os.path.basename(image)
-            print filename
-            draw = ImageDraw.Draw(img)
-            #font = ImageFont.truetype(<font-file>, <font-size>)
-            print self.text_font
-            font = ImageFont.truetype(self.text_font, 40)
-            print "after load of font"
-            #draw.text((x, y),"Sample Text",(r,g,b))
-            draw.text((10, 0), "Humidity:       " + str(self.sensor_values.dht11.humidity) + "% " ,self.text_color, font=font)
-            draw.text((10, 60), "Temperature: " + str(self.sensor_values.dht11.temp[0]) + "C / " + str(self.sensor_values.dht11.temp[1]) + "F" ,self.text_color, font=font)
-            draw.text((10, 930), str(datetime.datetime.now()) ,self.text_color, font=font)
-            img.save(self.output_path + filename, quality=self.jpeg_quality)
-            os.remove(image)
-            print( "Saved Image: {0}".format(self.output_path + filename) )
+        #if self.camera_enabled:
+        #    if self.verbose:
+        #        print("Start Picture capture.")
+        #    image = self.take_picture()
+        #    img = Image.open( image)
+        #    print(image)
+        #    filename = os.path.basename(image)
+        #    print(filename)
+        #    draw = ImageDraw.Draw(img)
+        #    #font = ImageFont.truetype(<font-file>, <font-size>)
+        #    print(self.text_font)
+        #    font = ImageFont.truetype(self.text_font, 40)
+        #    print("after load of font")
+        #    #draw.text((x, y),"Sample Text",(r,g,b))
+        #    draw.text((10, 0), "Humidity:       " + str(self.sensor_values.dht11.humidity) + "% " ,self.text_color, font=font)
+        #    draw.text((10, 60), "Temperature: " + str(self.sensor_values.dht11.temp[0]) + "C / " + str(self.sensor_values.dht11.temp[1]) + "F" ,self.text_color, font=font)
+        #    draw.text((10, 930), str(datetime.datetime.now()) ,self.text_color, font=font)
+        #    img.save(self.output_path + filename, quality=self.jpeg_quality)
+        #    os.remove(image)
+        #    print( "Saved Image: {0}".format(self.output_path + filename) )
 
         if self.localstorage or self.bufferlocally:
             self.update_station_timestamp()
 
         if self.verbose:
-            print "|---------------------------------------------------------------------------|"
+            print("|---------------------------------------------------------------------------|")
 
         return 1
 
@@ -936,7 +933,7 @@ class PIWEM:
     def update_station_timestamp(self):
         timestamp = str(datetime.datetime.utcnow())
         if self.debug:
-            print "Update Station Timestamp "+timestamp+" : Station_Hash: " + self.station_hash
+            print("Update Station Timestamp "+timestamp+" : Station_Hash: " + self.station_hash)
         self.conn.executemany("UPDATE weather_data.Stations SET `lastupdate` = %s WHERE station_hash = %s",
         [
             (timestamp, self.station_hash),
@@ -964,47 +961,47 @@ class PIWEM:
         count = 0
         if dht11_flag:
             count = self.count_dht11_buffers()
-        print count
+        print(count)
 
         if dht22_flag or count < 1:
             count = self.count_dht22_buffers()
-        print count
+        print(count)
 
         if bmp085_flag or count < 1:
             count = self.count_bmp085_buffers()
-        print count
+        print(count)
 
         if bmp180_flag or count < 1:
             count = self.count_bmp180_buffers()
-        print count
+        print(count)
 
         if bmp280_flag or count < 1:
             count = self.count_bmp280_buffers()
-        print count
+        print(count)
 
         if am2302_flag or count < 1:
             count = self.count_am2302_buffers()
-        print count
+        print(count)
 
         if analog_temp_sensor_flag or count < 1:
             count = self.count_analog_temp_sensor_buffers()
-        print count
+        print(count)
 
         if photoresistor_flag or count < 1:
             count = self.count_photoresistor_buffers()
-        print count
+        print(count)
 
         if thermistor_flag or count < 1:
             count = self.count_thermistor_buffers()
-        print count
+        print(count)
 
 
         if count < 1:
             if self.verbose:
-                print "Count of buffered rows was 0."
+                print("Count of buffered rows was 0.")
             return 0
         if self.debug:
-            print "Count for Buffered Data rows is: " + str(count)
+            print("Count for Buffered Data rows is: " + str(count))
 
         for n in range(0, count):
             buffer[n] = SensorValues.SensorValues()
@@ -1014,7 +1011,7 @@ class PIWEM:
 
         if dht11_flag:
             if self.debug:
-                print "dht11"
+                print("dht11")
             n = 0
             for row in self.get_dht11_buffers():
                 buffer[n].dht11.humidity = row[0]
@@ -1026,7 +1023,7 @@ class PIWEM:
 
         if dht22_flag:
             if self.debug:
-                print "dht22"
+                print("dht22")
             n = 0
             for row in self.get_dht22_buffers():
                 buffer[n].dht22.humidity = row[0]
@@ -1036,7 +1033,7 @@ class PIWEM:
 
         if bmp085_flag:
             if self.debug:
-                print "bmp085"
+                print("bmp085")
             n = 0
             for row in self.get_bmp085_buffers():
                 buffer[n].bmp085.pressure = row[0]
@@ -1047,7 +1044,7 @@ class PIWEM:
 
         if bmp180_flag:
             if self.debug:
-                print "bmpp180"
+                print("bmpp180")
             n = 0
             for row in self.get_bmp180_buffers():
                 buffer[n].bmp180.pressure = row[0]
@@ -1058,7 +1055,7 @@ class PIWEM:
 
         if bmp280_flag:
             if self.debug:
-                print "bmp280"
+                print("bmp280")
             n = 0
             for row in self.get_bmp280_buffers():
                 buffer[n].bmp280.pressure = row[0]
@@ -1069,7 +1066,7 @@ class PIWEM:
 
         if am2302_flag:
             if self.debug:
-                print "am2302"
+                print("am2302")
             n = 0
             for row in self.get_am2302_buffers():
                 buffer[n].am2302.humidity = row[0]
@@ -1079,7 +1076,7 @@ class PIWEM:
 
         if analog_temp_sensor_flag:
             if self.debug:
-                print "ats"
+                print("ats")
             n = 0
             for row in self.get_analog_temp_sensor_buffers():
                 buffer[n].analog_temp_sensor.append(row[0])
@@ -1088,14 +1085,14 @@ class PIWEM:
 
         if photoresistor_flag:
             if self.debug:
-                print "photoresistor"
+                print("photoresistor")
             n = 0
             for row in self.get_photoresistor_buffers():
                 buffer[n].photoresistor = row[0]
 
         if thermistor_flag:
             if self.debug:
-                print "thermistor"
+                print("thermistor")
             n = 0
             for row in self.get_thermistor_buffers():
                 buffer[n].thermistor.append(row[0])
@@ -1106,9 +1103,9 @@ class PIWEM:
             self.upload_data(buffer[row])
 
     def upload_data(self, buffered_values = None):
-        if buffered_values is not None:
+        if buffered_values != None:
             if self.verbose:
-                print "Uploading buffered data."
+                print("Uploading buffered data.")
             self.sensor_values = buffered_values
         self.payload = Payload.PayloadData()
         self.payload.station_name = self.station_name
@@ -1129,23 +1126,23 @@ class PIWEM:
         fullurl = url + '?' + data
         if self.debug:
             pprint(data)
-            print "FULL URL: " + fullurl
+            print("FULL URL: " + fullurl)
         try:
-            response = urllib2.urlopen(fullurl)
+            response = urllib.urlopen(fullurl)
             page = response.read()
             if self.debug:
-                print "HTTP Response: "
-                print page
+                print("HTTP Response: ")
+                print(page)
             if response.getcode() == 200:
                 if self.verbose:
-                    print "Success!"
+                    print("Success!")
                 return 1
             else:
                 if self.verbose:
-                    print "Error! " + str(response.getcode())
+                    print("Error! " + str(response.getcode()))
                 return 0
-        except urllib2.URLError, e:
-            print e.reason, e.message, e.args
+        except urllib.error.URLError as e:
+            print(e.reason, e.message, e.args)
             return -1
 
     def clear_buffer_data(self):
@@ -1162,70 +1159,70 @@ class PIWEM:
 
     def json_dump(self):
         if self.verbose:
-            print "Start Dump."
+            print("Start Dump.")
         self.payload.station_data = {'bmp085':{}, 'bmp180':{}}
         if self.bmp085_enabled:
             if self.debug:
-                print "bmp085"
-                print self.sensor_values.bmp085.__dict__
+                print("bmp085")
+                print(self.sensor_values.bmp085.__dict__)
             self.payload.station_data['bmp085'] = self.sensor_values.bmp085.__dict__
 
         if self.bmp180_enabled:
             if self.debug:
-                print "bmp180"
-                print self.sensor_values.bmp180.__dict__
+                print("bmp180")
+                print(self.sensor_values.bmp180.__dict__)
             self.payload.station_data['bmp180'] = self.sensor_values.bmp180.__dict__
 
         if self.bmp280_enabled:
             if self.debug:
-                print "bmp280"
-                print self.sensor_values.bmp280.__dict__
+                print("bmp280")
+                print(self.sensor_values.bmp280.__dict__)
             self.payload.station_data['bmp280'] = self.sensor_values.bmp280.__dict__
 
         if self.dht11_enabled:
             if self.debug:
-                print "dht11"
-                print self.sensor_values.dht11.__dict__
+                print("dht11")
+                print(self.sensor_values.dht11.__dict__)
             self.payload.station_data['dht11'] = self.sensor_values.dht11.__dict__
 
         if self.dht22_enabled:
             if self.debug:
-                print "dht22"
-                print self.sensor_values.dht22.__dict__
+                print("dht22")
+                print(self.sensor_values.dht22.__dict__)
             self.payload.station_data['dht22'] = self.sensor_values.dht22.__dict__
 
         if self.am2302_enabled:
             if self.debug:
-                print "am2302"
-                print self.sensor_values.am2302.__dict__
+                print("am2302")
+                print(self.sensor_values.am2302.__dict__)
             self.payload.station_data['am2302'] = self.sensor_values.am2302.__dict__
 
         if self.photoresistor_enabled:
             if self.debug:
-                print "photoresistor"
-                print self.sensor_values.photoresistor
+                print("photoresistor")
+                print(self.sensor_values.photoresistor)
             self.payload.station_data['photoresistor'] = self.sensor_values.photoresistor
 
         if self.analog_temp_sensor_enabled:
             if self.debug:
-                print "analog_temp_sensor"
-                print self.sensor_values.analog_temp_sensor
+                print("analog_temp_sensor")
+                print(self.sensor_values.analog_temp_sensor)
             self.payload.station_data['ats'] = self.sensor_values.analog_temp_sensor
 
         if self.thermistor_enabled:
             if self.debug:
-                print "thermistor"
-                print self.sensor_values.thermistor
+                print("thermistor")
+                print(self.sensor_values.thermistor)
             self.payload.station_data['therm'] = self.sensor_values.thermistor
 
         if self.power_enabled:
             if self.debug:
-                print "power"
-                print self.sensor_values.power
+                print("power")
+                print(self.sensor_values.power)
             self.payload.station_data['power'] = self.sensor_values.power
 
         if self.verbose:
-            print "Full Payload Dump";
+            print("Full Payload Dump")
         return json.dumps(self.payload.__dict__)
 
     def count_bmp085_buffers(self):
@@ -1250,7 +1247,7 @@ class PIWEM:
         self.conn.executemany("SELECT humidity, c_temp, f_temp FROM `weather_data`.`dht11` WHERE `station_hash` = %s AND buffered_data = 1 ORDER BY `timestamp` ASC", [(self.station_hash),] )
         # fetch all of the rows from the query
         data = self.conn.fetchall()
-        print len(data)
+        print(len(data))
         return len(data)
 
     def count_dht22_buffers(self):
@@ -1364,7 +1361,7 @@ class PIWEM:
 
     def weatherunderground(self):
         if self.verbose:
-            print "Starting upload of Weather Underground Data to: " + self.wu_url
+            print("Starting upload of Weather Underground Data to: " + self.wu_url)
 
         if self.temp_flag == "bmp085":
             tempf = self.sensor_values.bmp085.temp[1]
@@ -1419,26 +1416,26 @@ class PIWEM:
         }
 
 
-        data = urllib.urlencode(values)
+        data = urllib.parse.urlencode(values)
         fullurl = self.wu_url + '?' + data
         if self.debug:
             pprint(data)
-            print "FULL URL: " + fullurl
+            print("FULL URL: " + fullurl)
 
         try:
-            response = urllib2.urlopen(fullurl)
+            response = urllib.request.urlopen(fullurl)
             page = response.read()
             if self.debug:
-                print "HTTP Response: "
-                print page
+                print("HTTP Response: ")
+                print(page)
             if response.getcode() == 200:
                 if self.verbose:
-                    print "Success!"
+                    print("Success!")
                 return 1
             else:
                 if self.verbose:
-                    print "Error! " + str(response.getcode())
+                    print("Error! " + str(response.getcode()))
                 return 0
-        except urllib2.URLError, e:
-            print e.reason, e.message, e.args
+        except urllib.error.URLError as e:
+            print(e.reason, e.args)
             return -1

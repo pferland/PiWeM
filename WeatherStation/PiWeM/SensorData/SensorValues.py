@@ -1,7 +1,14 @@
-import bmp085_data, bmp180_data, bmp280_data, dht11_data, dht22_data, am2302_data, power_data
+import pprint
 
+from . import bmp085_data, bmp180_data, bmp280_data, dht11_data, dht22_data, am2302_data
 
-class SensorValues(object):
+class SensorValues:
+    bmp085 = None
+    bmp180 = None
+    bmp280 = None
+    dht11 = None
+    dht22 = None
+    am2302 = None
     def __init__(self):
         self.bmp085 = bmp085_data.bmp085_data()
 
@@ -14,8 +21,6 @@ class SensorValues(object):
         self.dht22 = dht22_data.dht22_data()
 
         self.am2302 = am2302_data.am2302_data()
-
-        self.power = [power_data.power_data(), power_data.power_data(), power_data.power_data()]
 
         self.thermistor = []
         self.analog_temp_sensor = []

@@ -146,3 +146,4 @@ $RECYCLE.BIN/
 *.lnk
 dummy_data.sql
 import.py
+settings.ini

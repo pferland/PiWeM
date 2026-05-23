@@ -113,7 +113,7 @@ class bmp280:
             self.dig_P8 = self.device.readS16LE(self.BMP280_REGISTER_DIG_P8)
             self.dig_P9 = self.device.readS16LE(self.BMP280_REGISTER_DIG_P9)
         else:
-            raise IOError("check sensor id 0x58=BMP280 failed, result was: " + str(self.BMP280_REGISTER_CHIPID))
+            raise OSError("check sensor id 0x58=BMP280 failed, result was: " + str(self.BMP280_REGISTER_CHIPID))
 
 
     def read(self):
