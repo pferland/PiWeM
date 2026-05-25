@@ -1,10 +1,10 @@
-from configparser import ConfigParser
+import configparser
 import os
 
 
 class PiWeMConfig:
     def __init__(self):
-        self.Config = ConfigParser()
+        self.Config = configparser.ConfigParser()
         self.Config.read(os.path.join("./", "settings.ini"))
 
 

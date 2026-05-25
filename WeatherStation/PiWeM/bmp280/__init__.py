@@ -1,2 +1,2 @@
-from bmp280 import *
+from . import bmp280
 __all__ = ['bmp280']

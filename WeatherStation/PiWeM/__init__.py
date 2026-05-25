@@ -1,1 +1,8 @@
-__all__ = ['PIWEM', 'dht11', 'PCM8591', 'SensorData', 'bmp280', 'wind']
+from PiWeM import PiWeM
+from . import SensorData
+from . import Payload
+from . import bmp280
+from . import dht11
+__all__ = ['PiWeM', 'dht11', 'bmp280', 'wind', 'Payload']
+
+

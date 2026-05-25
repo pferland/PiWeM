@@ -30,31 +30,27 @@ text_color = tuple(settings['text_color'].split(",")) # Same for the Text color 
 
 # Create the main object and set a few extra settings aside from the defaults.
 try:
-    mon = PiWeM.PIWEM(settings=settings)
+    mon = PiWeM.PiWeM(settings=settings)
 
 except OSError as e:
     print(e.args)
     print(e.errno)
     print(e.strerror)
     print(e.filename)
-    print(e.message)
     sys.exit(1)
 
 except ValueError as e:
     print(e.args)
-    print(e.errno)
-    print(e.strerror)
-    print(e.filename)
-    print(e.message)
     sys.exit(1)
 
 try:
     if args['genhash']:
         if args['f']:
-            print(mon.genhash())
+            mon.generate_station_hash()
         else:
-            print(mon.get_station_hash())
-except:
+            mon.get_station_hash()
+    print("Station Hash: "+mon.station_hash)
+except Exception as e:
     print("No need to generate a new hash..")
 
 # Lets start!

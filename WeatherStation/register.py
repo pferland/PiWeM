@@ -1,4 +1,7 @@
-import sys, os, secrets
+import sys
+import os
+import secrets
+import uuid
 from datetime import datetime
 
 import MySQLdb
@@ -10,28 +13,44 @@ settings = PWMConfig.ConfigMap("settings").get("settings")  # Open settings.ini 
 STATION_NAME = "Raspberry Pi Weather Station"
 HASH_FILE = "station_hash.txt"
 
-def load_station_hash():
-    """Reads and cleans the hash from the text file."""
-    if not os.path.exists(HASH_FILE):
-        print(f"Error: The file '{HASH_FILE}' was not found in the current directory.")
-        print(f"Please create it at: {os.path.abspath(HASH_FILE)}")
-        sys.exit(1)
 
-    with open(HASH_FILE, "r") as f:
-        station_hash = f.read().strip()
-
-    if not station_hash:
-        print(f"Error: The file '{HASH_FILE}' is empty. Please add your hash to it.")
-        sys.exit(1)
-
+def generate_station_hash():
+    station_hash_file = open('station_hash.txt', 'w+')
+    station_hash = str(uuid.uuid4())
+    station_hash_file.write(station_hash)
+    station_hash_file.close()
     return station_hash
 
+def load_station_hash():
+    """Reads and cleans the hash from the text file."""
+    station_hash = ""
+    if not os.path.exists(HASH_FILE):
+        station_hash = generate_station_hash()
+    else:
+        with open(HASH_FILE, "r") as f:
+            station_hash = f.read().strip()
+            print(f"Loaded station hash from file: {station_hash}")
+    if not station_hash:
+        print(f"Error: Failed to get Station Hash from file or even generate one...")
+        sys.exit(1)
+    return station_hash
+
+def load_station_key():
+    """Reads and cleans the hash from the text file."""
+    if not settings['station_key']:
+        print("There is no currently set Station Key. We will need to generate one.")
+        station_key = secrets.token_hex(16)
+    else:
+        station_key = settings['station_key']
+    return station_key
 
 def register_station():
     # Load the hash dynamically from the text file
     station_hash = load_station_hash()
-    secure_station_key = secrets.token_hex(16)
-    print(f"Loaded station hash from file: {station_hash}")
+
+    station_key = load_station_key()
+
+
     current_time = datetime.now()
     try:
         print(f"Connecting to database 'weather_data'...")
