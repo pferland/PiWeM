@@ -71,6 +71,7 @@ class PiWeM:
     am2302_instance = None
 
     # Initial Values for Wind Sensors
+    wind                           = None
     wind_enabled                   = 0
     anemometer_sensor_diameter     = 0
     analog_wind_anemometer_enabled = 0
@@ -251,6 +252,7 @@ class PiWeM:
         self.setup_bmp280(address=self.bmp280_address)
 
         self.setup_pcf8591(address=self.pcf8591_address)  # Default address for the PCF8591 == 0x48, so its hardcoded, but you can set it to what ever you want with the address variable
+        self.setup_wind()
         return 0
 
     def insert_station_sensors(self):
@@ -258,12 +260,12 @@ class PiWeM:
 
         if self.debug:
             print("Values to write to sensor tables:")
-            print((self.station_hash, bool(self.dht11_enabled), bool(self.dht22_enabled), bool(self.bmp085_enabled), bool(self.bmp180_enabled), bool(self.bmp280_enabled), bool(self.thermistor_enabled), bool(self.analog_temp_sensor_enabled), bool(self.photoresistor_enabled), timestamp))
+            print((self.station_hash, bool(self.dht11_enabled), bool(self.dht22_enabled), bool(self.bmp085_enabled), bool(self.bmp180_enabled), bool(self.bmp280_enabled), bool(self.thermistor_enabled), bool(self.analog_temp_sensor_enabled), bool(self.photoresistor_enabled), bool(self.am2302_enabled), timestamp))
             print("")
-        self.conn.executemany("INSERT INTO `weather_data`.`Station_sensors` (`station_hash`, `dht11`, `dht22`, `bmp085`, `bmp180`, `bmp280`, `thermistor`, `analog_temp_sensor`, `photoresistor`, `timestamp`)  "
+        self.conn.executemany("INSERT INTO `weather_data`.`Station_sensors` (`station_hash`, `dht11`, `dht22`, `bmp085`, `bmp180`, `bmp280`, `thermistor`, `analog_temp_sensor`, `photoresistor`, `am2302`, `timestamp`)  "
                               "VALUES ( %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ",
         [
-            (self.station_hash, bool(self.dht11_enabled), bool(self.dht22_enabled), bool(self.bmp085_enabled), bool(self.bmp180_enabled), bool(self.bmp280_enabled), bool(self.thermistor_enabled), bool(self.analog_temp_sensor_enabled), bool(self.photoresistor_enabled), timestamp),
+            (self.station_hash, bool(self.dht11_enabled), bool(self.dht22_enabled), bool(self.bmp085_enabled), bool(self.bmp180_enabled), bool(self.bmp280_enabled), bool(self.thermistor_enabled), bool(self.analog_temp_sensor_enabled), bool(self.photoresistor_enabled), bool(self.am2302_enabled), timestamp),
         ])
         self.db.commit()
         return 0
@@ -302,14 +304,14 @@ class PiWeM:
 
     def setup_bmp280(self, address = 0x76):
         if self.bmp280_enabled:
-            import bmp280 as bmp280_sn
+            from . import bmp280 as bmp280_sn
             self.bmp280_address = address
             self.bmp280_instance = bmp280_sn.bmp280(address=self.bmp280_address)
         return 0
 
     def setup_pcf8591(self, address = 0x48):
         if self.pcf8591_enabled:
-            import PCF8591 as ADC
+            from . import PCF8591 as ADC
             self.pcf8591_address = address
             self.pcf8591_instance = ADC
             self.pcf8591_instance.setup(self.pcf8591_address)
@@ -317,23 +319,35 @@ class PiWeM:
 
     def setup_dht11(self, pin):
         if self.dht11_enabled:
-            from dht11 import DHT11
+            from .dht11 import DHT11
             self.dht11_pin      = pin
             self.dht11_instance = DHT11(pin=self.dht11_pin)
         return 0
 
     def setup_dht22(self, pin):
         if self.dht22_enabled:
-            from dht11 import DHT11
+            from .dht11 import DHT11
             self.dht22_pin = pin
             self.dht22_instance = DHT11(pin=self.dht22_pin)
         return 0
 
     def setup_am2302(self, pin):
         if self.am2302_enabled:
-            from dht11 import DHT11
+            from .dht11 import DHT11
             self.am2302_pin = pin
             self.am2302_instance = DHT11(pin=self.am2302_pin)
+        return 0
+
+    def setup_wind(self):
+        if self.wind_enabled:
+            from .wind import wind
+            self.wind = wind(
+                analog_wind_vane_pin=self.analog_wind_vane_pin,
+                analog_wind_anemometer_pin=self.analog_wind_anemometer_pin,
+                anemometer_sensor_diameter=self.anemometer_sensor_diameter,
+                debug=self.debug,
+                verbose=self.verbose
+            )
         return 0
 
     def insert_data(self, buffered=0):
@@ -383,27 +397,30 @@ class PiWeM:
         if self.bmp085_enabled:
             if self.debug:
                 print("bmp085_enabled")
+            bmp085_f = (self.sensor_values.bmp085.temperature * 9 / 5) + 32
             self.conn.executemany("INSERT INTO weather_data.bmp085 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.bmp085.pressure, self.sensor_values.bmp085.temp[0], self.sensor_values.bmp085.temp[1], self.sensor_values.bmp085.altitude, self.station_hash, self.sensor_values.timestamp, buffered),
+            (self.sensor_values.bmp085.pressure, self.sensor_values.bmp085.temperature, bmp085_f, self.sensor_values.bmp085.altitude, self.station_hash, self.sensor_values.timestamp, buffered),
             ])
             self.db.commit()
 
         if self.bmp180_enabled:
             if self.debug:
                 print("bmp180_enabled")
+            bmp180_f = (self.sensor_values.bmp180.temperature * 9 / 5) + 32
             self.conn.executemany("INSERT INTO weather_data.bmp180 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.bmp180.pressure, self.sensor_values.bmp180.temp[0], self.sensor_values.bmp180.temp[1], self.sensor_values.bmp180.altitude, self.station_hash, self.sensor_values.timestamp, buffered),
+            (self.sensor_values.bmp180.pressure, self.sensor_values.bmp180.temperature, bmp180_f, self.sensor_values.bmp180.altitude, self.station_hash, self.sensor_values.timestamp, buffered),
             ])
             self.db.commit()
 
         if self.bmp280_enabled:
             if self.debug:
                 print("bmp280_enabled")
+            bmp280_f = (self.sensor_values.bmp280.temperature * 9 / 5) + 32
             self.conn.executemany("INSERT INTO weather_data.bmp280 ( pressure, c_temp, f_temp, altitude, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s, %s) ",
             [
-            (self.sensor_values.bmp280.pressure, self.sensor_values.bmp280.temp[0], self.sensor_values.bmp280.temp[1], self.sensor_values.bmp280.altitude, self.station_hash, self.sensor_values.timestamp, buffered),
+            (self.sensor_values.bmp280.pressure, self.sensor_values.bmp280.temperature, bmp280_f, self.sensor_values.bmp280.altitude, self.station_hash, self.sensor_values.timestamp, buffered),
             ])
             self.db.commit()
 
@@ -422,6 +439,15 @@ class PiWeM:
             self.conn.executemany("INSERT INTO weather_data.dht22 ( c_temp, f_temp, humidity, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
             [
             (self.sensor_values.dht22.temp[0], self.sensor_values.dht22.temp[1], self.sensor_values.dht22.humidity, self.station_hash, self.sensor_values.timestamp, buffered),
+            ])
+            self.db.commit()
+
+        if self.am2302_enabled:
+            if self.debug:
+                print("am2302_enabled")
+            self.conn.executemany("INSERT INTO weather_data.am2302 ( c_temp, f_temp, humidity, station_hash, `timestamp`, `buffered_data` ) VALUES ( %s, %s, %s, %s, %s, %s) ",
+            [
+            (self.sensor_values.am2302.am2302_temp[0], self.sensor_values.am2302.am2302_temp[1], self.sensor_values.am2302.am2302_humidity, self.station_hash, self.sensor_values.timestamp, buffered),
             ])
             self.db.commit()
 
@@ -476,16 +502,18 @@ class PiWeM:
 
             insert_array = []
             for i in range(len(self.sensor_values.power)):
-                insert_array.append((self.station_hash, i, self.sensor_values.power[i].shunt_mV, self.sensor_values.power[i].voltage,
-                 self.sensor_values.power[i].current_mA, self.sensor_values.power[i].power_mW,
-                 self.sensor_values.timestsamp))
+                p = self.sensor_values.power[i]
+                insert_array.append((self.station_hash, p.channel, p.shunt_mV, p.voltage,
+                 p.current_mA, p.power_mW,
+                 self.sensor_values.timestamp))
 
-            self.conn.executemany(
-                "INSERT INTO weather_data.power_monitor ( station_hash, `channel`, `shunt_mV`, `voltage`, `current_mA`, "
-                "`power_mW`, `timestamp` ) VALUES ( %s, %s, %s, %s, %s, %s, %s) ",
-                insert_array
-            )
-            self.db.commit()
+            if len(insert_array) > 0:
+                self.conn.executemany(
+                    "INSERT INTO weather_data.power_monitor ( station_hash, `channel`, `shunt_mV`, `voltage`, `current_mA`, "
+                    "`power_mW`, `timestamp` ) VALUES ( %s, %s, %s, %s, %s, %s, %s) ",
+                    insert_array
+                )
+                self.db.commit()
         return 0
 
     def get_cpu_temperature(self):
@@ -495,45 +523,35 @@ class PiWeM:
     def get_am2302_data(self):
         if self.am2302_enabled:
             result = self.am2302_instance.read()
-            self.sensor_values.am2302.temperature = result.temperature
-            self.sensor_values.am2302.humidity = result.humidity
+            f_temp = ((int(result.temperature) * 9)/5)+32
+            self.sensor_values.am2302.am2302_temp = [result.temperature, f_temp]
+            self.sensor_values.am2302.am2302_humidity = result.humidity
         return 0
 
     def get_dht11_data(self):
         if self.dht11_enabled:
             result = self.dht11_instance.read()
             f_temp = ((int(result.temperature) * 9)/5)+32
-            humidity_results = result.humidity
-            self.sensor_values.dht11.temperature = result.temperature
+            self.sensor_values.dht11.temp = [result.temperature, f_temp]
             self.sensor_values.dht11.humidity = result.humidity
         return 0
 
     def get_dht22_data(self):
         if self.dht22_enabled:
-            result = self.dht11_instance.read()
+            result = self.dht22_instance.read()
             f_temp = ((int(result.temperature) * 9)/5)+32
-            if result.humidity == 0:
-                if self.debug:
-                    print("Error fetching DHT Data")
-                humidity_results = 0
-            else:
-                humidity_results = result.humidity
-            if result.temperature == 0:
-                temp_results = (0, 0)
-                self.sensor_values.fetch_error.append("DHT11 fetch error")
-            else:
-                temp_results = (result.temperature, f_temp)
-            return temp_results, humidity_results
+            self.sensor_values.dht22.temp = [result.temperature, f_temp]
+            self.sensor_values.dht22.humidity = result.humidity
         return 0
 
     def get_bmp085_data(self):
         if self.bmp085_enabled:
-            self.sensor_values.bmp180.pressure = self.bmp085_instance.read_pressure()
-            self.sensor_values.bmp180.altitude = self.bmp085_instance.read_altitude()
-            self.sensor_values.bmp180.temperature = self.bmp085_instance.read_temperature()
-            self.sensor_values.bmp180.raw_temp = self.bmp085_instance.read_raw_temp()
-            self.sensor_values.bmp180.raw_pressure = self.bmp085_instance.read_raw_pressure()
-            self.sensor_values.bmp180.sealevel_pressure = self.bmp085_instance.read_sealevel_pressure()
+            self.sensor_values.bmp085.pressure = self.bmp085_instance.read_pressure()
+            self.sensor_values.bmp085.altitude = self.bmp085_instance.read_altitude()
+            self.sensor_values.bmp085.temperature = self.bmp085_instance.read_temperature()
+            self.sensor_values.bmp085.raw_temp = self.bmp085_instance.read_raw_temp()
+            self.sensor_values.bmp085.raw_pressure = self.bmp085_instance.read_raw_pressure()
+            self.sensor_values.bmp085.sealevel_pressure = self.bmp085_instance.read_sealevel_pressure()
         return 0
 
     def get_bmp180_data(self):
@@ -550,11 +568,9 @@ class PiWeM:
         if self.bmp280_enabled:
             data = self.bmp280_instance.read()
             # data = ((temp, f_temp), press, altitude)
-            self.sensor_values.bmp180.pressure = data[1]
-            self.sensor_values.bmp180.altitude = data[2]
-            self.sensor_values.bmp180.temperature = data[0][0]
-            self.sensor_values.bmp180.raw_temp = data[0]
-            self.sensor_values.bmp180.raw_pressure = data[1]
+            self.sensor_values.bmp280.pressure = data[1]
+            self.sensor_values.bmp280.altitude = data[2]
+            self.sensor_values.bmp280.temperature = data[0][0]
         return 0
 
     def get_thermistor_temp_data(self):   # Get Data from the Thermistor
@@ -574,7 +590,7 @@ class PiWeM:
             f_temp = ((int(temp) * 9)/5)+32
             if self.debug:
                 print("Celsius: " + str(temp) + " ||  Fahrenheit" + str(f_temp))
-            self.sensor_values.thermistor.temperature = temp
+            self.sensor_values.thermistor = [temp, f_temp]
         return 0
 
     def get_ats_temp_data(self):  # Get data from the Analog Temperature Sensor
@@ -594,7 +610,7 @@ class PiWeM:
             f_temp = ((int(temp) * 9)/5)+32
             if self.debug:
                 print("Analog C Temp: " + str(temp) + "    Analog F Temp" + str(f_temp))
-            self.sensor_values.analog_temp_sensor = temp
+            self.sensor_values.analog_temp_sensor = [temp, f_temp]
         return 0
 
     def get_sensor_data(self):  # Gather all the sensors data
@@ -667,6 +683,15 @@ class PiWeM:
             except:
                 self.sensor_values.fetch_error.append(sys.exc_info()[0])
 
+        if self.am2302_enabled:
+            if self.verbose:
+                sys.stdout.write("am2302, ")
+                sys.stdout.flush()
+            try:
+                self.get_am2302_data()
+            except:
+                self.sensor_values.fetch_error.append(sys.exc_info()[0])
+
         if self.photoresistor_enabled:
             if self.verbose:
                 sys.stdout.write("Photoresistor, ")
@@ -676,13 +701,22 @@ class PiWeM:
             except:
                 self.sensor_values.fetch_error.append(sys.exc_info()[0])
 
+        if self.power_monitor:
+            if self.verbose:
+                sys.stdout.write("Power, ")
+                sys.stdout.flush()
+            try:
+                self.get_power_data()
+            except:
+                self.sensor_values.fetch_error.append(sys.exc_info()[0])
+
         if self.wind_enabled:
             if self.analog_wind_vane_enabled:
                 if self.verbose:
                     sys.stdout.write("Wind Vane, ")
                     sys.stdout.flush()
                     try:
-                        self.wind.getDirection()
+                        self.sensor_values.wind_direction = self.wind.getDirection()
                     except:
                         self.sensor_values.fetch_error.append(sys.exc_info()[0])
 
@@ -691,7 +725,7 @@ class PiWeM:
                     sys.stdout.write("Wind Anemometer, ")
                     sys.stdout.flush()
                 try:
-                    self.wind.getWindSpeedData()
+                    self.sensor_values.wind_speed = self.wind.getWindSpeedData()
                 except:
                     self.sensor_values.fetch_error.append(sys.exc_info()[0])
 
@@ -1006,13 +1040,13 @@ class PiWeM:
 
         url = self.PiWem_Central_Server + '/piwem/api/api.php'
         values = {'payload' : json_data, 'station_hash': self.station_hash, 'station_key': self.station_key, 'mode': 'importdata'}
-        data = urllib.urlencode(values)
+        data = urllib.parse.urlencode(values)
         fullurl = url + '?' + data
         if self.debug:
             pprint(data)
             print("FULL URL: " + fullurl)
         try:
-            response = urllib.urlopen(fullurl)
+            response = urllib.request.urlopen(fullurl)
             page = response.read()
             if self.debug:
                 print("HTTP Response: ")
@@ -1026,7 +1060,7 @@ class PiWeM:
                     print("Error! " + str(response.getcode()))
                 return 0
         except urllib.error.URLError as e:
-            print(e.reason, e.message, e.args)
+            print(e.reason, e.args)
             return -1
         return 0
 

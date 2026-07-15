@@ -107,4 +107,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    register_station(station_name=args.name, station_hash_file_path=HASH_FILE)
+    register_station(station_name=args.StationName, station_hash_file_path=HASH_FILE)

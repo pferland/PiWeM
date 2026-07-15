@@ -111,7 +111,7 @@ class wind:
         sample_length = 15.0
         while total_runtime < sample_length:
             if self.debug:
-                print "+++++++++++++++++++++++++++++++++++++++++++"
+                print("+++++++++++++++++++++++++++++++++++++++++++")
             start = time.time()
             read_value = self.gpio_read(self.wind_speed_pin)
             now = datetime.datetime.utcnow().strftime('%S.%f')
@@ -121,7 +121,7 @@ class wind:
                 sys.stdout.write(".")
                 sys.stdout.flush()
                 if self.debug:
-                    print "*******************************************************************************************\r\n*******************************************************************************************\r\nCLICK!!!!!\r\n*******************************************************************************************\r\n*******************************************************************************************"
+                    print("*******************************************************************************************\r\n*******************************************************************************************\r\nCLICK!!!!!\r\n*******************************************************************************************\r\n*******************************************************************************************")
             #end_process_time = time.time()
             #prev_time = float(now)
 
@@ -135,7 +135,7 @@ class wind:
                 #print "Process run time: " + str(end_process_time - start)
                 #print "Time Difference:  " + str(calc)
                 #print str(now) + " : " + str(read_value)
-        print "Total Runtime: " + str(total_runtime)
+        print("Total Runtime: " + str(total_runtime))
                 #print "+++++++++++++++++++++++++++++++++++++++++++"
 
         ft_min = self.circumference_ft * ((click / 2) * 4)
@@ -156,11 +156,11 @@ class wind:
         if self.verbose:
             print("circumference: " + str(self.circumference))
             print("circumference_ft: " + str(self.circumference_ft))
-            print str(sample_length) + " Seconds of runtime is up."
-            print "There were " + str(click / 2) + " rotations detected. "
-            print str( ((click / 2) * 4) / 60 ) + " rotations a second average."
-            print str( ((click / 2) * 4)) + " rotations per minute"
-            print "Maybe the m/s for the Anemometer: " + str(metersPS) + " ?"
-            print "MPH: " + str(milesPH)
+            print(str(sample_length) + " Seconds of runtime is up.")
+            print("There were " + str(click / 2) + " rotations detected. ")
+            print(str( ((click / 2) * 4) / 60 ) + " rotations a second average.")
+            print(str( ((click / 2) * 4)) + " rotations per minute")
+            print("Maybe the m/s for the Anemometer: " + str(metersPS) + " ?")
+            print("MPH: " + str(milesPH))
 
         return milesPH, metersPS

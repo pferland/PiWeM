@@ -33,7 +33,7 @@ class PiWeMAPI
             throw new Exception("Station Key not set.");
         }
 
-        $prep = $this->SQL->conn->prepare("SELECT station_name FROM `weather_data`.`Stations` WHERE station_hash = ? AND station_key = ?");
+        $prep = $this->SQL->conn->prepare("SELECT station_name FROM `".$this->SQL->db."`.`Stations` WHERE station_hash = ? AND station_key = ?");
         $prep->bindParam(1, $this->station_hash, PDO::PARAM_STR);
         $prep->bindParam(2, $this->station_key, PDO::PARAM_STR);
         $prep->execute();
@@ -65,223 +65,159 @@ class PiWeMAPI
         }
 
         $json_data = json_decode($this->payload, True);
+        if (!$json_data) {
+            throw new Exception("Invalid JSON payload.");
+        }
 
-        foreach($json_data as $key=>$value)
-        {
-            #var_dump($key, $value);
-            switch($key)
-            {
-                case "station_name":
-                    $this->station_name = $value;
-                    break;
-                case "timestamp":
-                    $this->timestamp = $value;
-                    break;
-                case "station_hash":
-                    $this->station_hash = $value;
-                    break;
-                case "station_data":
-                    foreach($value as $subkey=>$sensor)
-                    {
-                        #var_dump($subkey, $sensor);
-                        switch($subkey)
-                        {
-                            case "bmp085":
-                                print $this->import_BMP085($sensor);
-                                break;
-                            case "bmp180":
-                                print $this->import_BMP180($sensor);
-                                break;
-                            case "bmp280":
-                                print $this->import_BMP280($sensor);
-                                break;
-                            case "dht11":
-                                print $this->import_DHT11($sensor);
-                                break;
-                            case "dht22":
-                                print $this->import_DHT22($sensor);
-                                break;
-                            case "am2302":
-                                print $this->import_AM2302($sensor);
-                                break;
-                            case "ats":
-                                print $this->import_ATS($sensor);
-                                break;
-                            case "photoresistor":
-                                print $this->import_photoresistor($sensor);
-                                break;
-                            case "therm":
-                                print $this->import_thermistor($sensor);
-                                break;
-                            case "power":
-                                print $this->import_power($sensor);
-                                break;
-                        }
-                        print "------------------------------------<br>\r\n";
+        $station_name = "";
+        $station_hash = $this->station_hash;
+        $timestamp = $this->timestamp;
+
+        if (isset($json_data['station_name'])) {
+            $station_name = $json_data['station_name'];
+        }
+        if (isset($json_data['station_hash'])) {
+            $station_hash = $json_data['station_hash'];
+        }
+        if (isset($json_data['timestamp'])) {
+            $timestamp = $json_data['timestamp'];
+        }
+
+        // Initialize all schema fields to default values
+        $pressure = 0.0;
+        $altitude = 0.0;
+        $photolevel = 0;
+        $c_temp = 0;
+        $f_temp = 0;
+        $humidity = 0;
+        $voltage = 0.0;
+        $shunt_mV = 0.0;
+        $current_mA = 0;
+        $power_mW = 0.0;
+        $power_channel = 0;
+        $wind_mps = 0.0;
+        $wind_direction = 0;
+
+        if (isset($json_data['station_data']) && is_array($json_data['station_data'])) {
+            $data = $json_data['station_data'];
+
+            // 1. Temperature & Humidity & Pressure & Altitude from BMP sensors
+            foreach (['bmp280', 'bmp180', 'bmp085'] as $bmp) {
+                if (isset($data[$bmp]) && is_array($data[$bmp])) {
+                    $b = $data[$bmp];
+                    if (isset($b['pressure'])) {
+                        $pressure = (float)$b['pressure'];
                     }
-                    break;
+                    if (isset($b['altitude'])) {
+                        $altitude = (float)$b['altitude'];
+                    }
+                    if (isset($b['temp']) && is_array($b['temp'])) {
+                        $c_temp = (int)$b['temp'][0];
+                        $f_temp = (int)$b['temp'][1];
+                    } elseif (isset($b['temperature'])) {
+                        $c_temp = (int)$b['temperature'];
+                        $f_temp = (int)($c_temp * 1.8 + 32);
+                    }
+                    break; // Use the first available BMP sensor
+                }
+            }
+
+            // 2. Humidity & Temperature from DHT / AM2302 sensors
+            foreach (['dht22', 'am2302', 'dht11'] as $dht) {
+                if (isset($data[$dht]) && is_array($data[$dht])) {
+                    $d = $data[$dht];
+                    if (isset($d['humidity'])) {
+                        $humidity = (int)$d['humidity'];
+                    }
+                    // Only overwrite temperature if not already set by BMP
+                    if ($c_temp == 0) {
+                        if (isset($d['temp']) && is_array($d['temp'])) {
+                            $c_temp = (int)$d['temp'][0];
+                            $f_temp = (int)$d['temp'][1];
+                        } elseif (isset($d['temperature'])) {
+                            $c_temp = (int)$d['temperature'];
+                            $f_temp = (int)($c_temp * 1.8 + 32);
+                        }
+                    }
+                    break; // Use first available DHT/AM2302 sensor
+                }
+            }
+
+            // 3. Temperature from ats or therm (analog temperature / thermistor)
+            if ($c_temp == 0) {
+                if (isset($data['ats']) && is_array($data['ats'])) {
+                    $c_temp = (int)$data['ats'][0];
+                    $f_temp = (int)$data['ats'][1];
+                } elseif (isset($data['therm']) && is_array($data['therm'])) {
+                    $c_temp = (int)$data['therm'][0];
+                    $f_temp = (int)$data['therm'][1];
+                }
+            }
+
+            // 4. Photoresistor
+            if (isset($data['photoresistor'])) {
+                $photolevel = (int)$data['photoresistor'];
+            }
+
+            // 5. Power monitoring
+            if (isset($data['power']) && is_array($data['power'])) {
+                $p = $data['power'];
+                $voltage = isset($p['voltage']) ? (float)$p['voltage'] : 0.0;
+                $shunt_mV = isset($p['shunt_mV']) ? (float)$p['shunt_mV'] : 0.0;
+                $current_mA = isset($p['current_mA']) ? (int)$p['current_mA'] : 0;
+                $power_mW = isset($p['power_mW']) ? (float)$p['power_mW'] : 0.0;
+                $power_channel = isset($p['channel']) ? (int)$p['channel'] : 0;
+            }
+
+            // 6. Wind monitoring
+            if (isset($data['wind']) && is_array($data['wind'])) {
+                $w = $data['wind'];
+                $wind_mps = isset($w['wind_mps']) ? (float)$w['wind_mps'] : (isset($w['meters_per_second']) ? (float)$w['meters_per_second'] : 0.0);
+                $wind_direction = isset($w['wind_direction']) ? (int)$w['wind_direction'] : (isset($w['direction']) ? (int)$w['direction'] : 0);
             }
         }
+
+        // Insert consolidated sensor row
+        $prep = $this->SQL->conn->prepare("INSERT INTO `".$this->SQL->db."`.`weather_data` 
+            (pressure, altitude, photolevel, c_temp, f_temp, humidity, voltage, shunt_mV, current_mA, power_mW, power_channel, wind_mps, wind_direction, timestamp, station_hash) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+        $prep->bindParam(1, $pressure);
+        $prep->bindParam(2, $altitude);
+        $prep->bindParam(3, $photolevel, PDO::PARAM_INT);
+        $prep->bindParam(4, $c_temp, PDO::PARAM_INT);
+        $prep->bindParam(5, $f_temp, PDO::PARAM_INT);
+        $prep->bindParam(6, $humidity, PDO::PARAM_INT);
+        $prep->bindParam(7, $voltage);
+        $prep->bindParam(8, $shunt_mV);
+        $prep->bindParam(9, $current_mA, PDO::PARAM_INT);
+        $prep->bindParam(10, $power_mW);
+        $prep->bindParam(11, $power_channel, PDO::PARAM_INT);
+        $prep->bindParam(12, $wind_mps);
+        $prep->bindParam(13, $wind_direction, PDO::PARAM_INT);
+        $prep->bindParam(14, $timestamp, PDO::PARAM_STR);
+        $prep->bindParam(15, $station_hash, PDO::PARAM_STR);
+
+        $prep->execute();
+
+        // Update lastupdate timestamp on Stations
+        $this->timestamp = $timestamp;
+        $this->station_hash = $station_hash;
         $this->UpdateStationTimestamp();
+
+        print "1";
     }
 
     function UpdateStationTimestamp()
     {
         if($this->timestamp === "")
         {return 0;}
-        $prep = $this->SQL->conn->prepare("UPDATE `weather_data`.`Stations` SET `lastupdate` = ? WHERE station_hash = ?");
+        $prep = $this->SQL->conn->prepare("UPDATE `".$this->SQL->db."`.`Stations` SET `lastupdate` = ? WHERE station_hash = ?");
         $prep->bindParam(1, $this->timestamp, PDO::PARAM_STR);
         $prep->bindParam(2, $this->station_hash, PDO::PARAM_STR);
         $prep->execute();
         return 1;
     }
-
-    function import_BMP085($data)
-    {
-        if(empty($data))
-        {return 0;}
-        $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`bmp085` (pressure, c_temp, f_temp, altitude, station_hash, `timestamp`) VALUES (?, ?, ?, ?, ?, ?)");
-        $prep->bindParam(1, $data['pressure'], PDO::PARAM_STR);
-        $prep->bindParam(2, $data['temp'][0], PDO::PARAM_STR);
-        $prep->bindParam(3, $data['temp'][1], PDO::PARAM_STR);
-        $prep->bindParam(4, $data['altitude'], PDO::PARAM_STR);
-        $prep->bindParam(5, $this->station_hash, PDO::PARAM_STR);
-        $prep->bindParam(6, $this->timestamp, PDO::PARAM_STR);
-        $prep->execute();
-        return 1;
-    }
-
-    function import_BMP180($data)
-    {
-        if(empty($data))
-        {return 0;}
-        $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`bmp180` (pressure, c_temp, f_temp, altitude, station_hash, `timestamp`) VALUES (?, ?, ?, ?, ?, ?)");
-        $prep->bindParam(1, $data['pressure'], PDO::PARAM_STR);
-        $prep->bindParam(2, $data['temp'][0], PDO::PARAM_STR);
-        $prep->bindParam(3, $data['temp'][1], PDO::PARAM_STR);
-        $prep->bindParam(4, $data['altitude'], PDO::PARAM_STR);
-        $prep->bindParam(5, $this->station_hash, PDO::PARAM_STR);
-        $prep->bindParam(6, $this->timestamp, PDO::PARAM_STR);
-        $prep->execute();
-        return 1;
-    }
-
-    function import_BMP280($data)
-    {
-        if(empty($data))
-        {return 0;}
-        var_dump("------------------------------------------------\r\n------------------------\r\n--------------------------------------------");
-        var_dump($data);
-        $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`bmp280` (pressure, c_temp, f_temp, altitude, station_hash, `timestamp`) VALUES (?, ?, ?, ?, ?, ?)");
-        $prep->bindParam(1, $data['pressure'], PDO::PARAM_STR);
-        $prep->bindParam(2, $data['temp'][0], PDO::PARAM_STR);
-        $prep->bindParam(3, $data['temp'][1], PDO::PARAM_STR);
-        $prep->bindParam(4, $data['altitude'], PDO::PARAM_STR);
-        $prep->bindParam(5, $this->station_hash, PDO::PARAM_STR);
-        $prep->bindParam(6, $this->timestamp, PDO::PARAM_STR);
-        $prep->execute();
-        var_dump("------------------------------------------------\r\n------------------------\r\n--------------------------------------------");
-        return 1;
-    }
-
-    function import_DHT11($data)
-    {
-        if(empty($data))
-        {return 0;}
-        $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`dht11` (c_temp, f_temp, humidity, station_hash, `timestamp`) VALUES (?, ?, ?, ?, ?)");
-        $prep->bindParam(1, $data['temp'][0], PDO::PARAM_STR);
-        $prep->bindParam(2, $data['temp'][1], PDO::PARAM_STR);
-        $prep->bindParam(3, $data['humidity'], PDO::PARAM_STR);
-        $prep->bindParam(4, $this->station_hash, PDO::PARAM_STR);
-        $prep->bindParam(5, $this->timestamp, PDO::PARAM_STR);
-        $prep->execute();
-        return 1;
-    }
-
-    function import_DHT22($data)
-    {
-        if(empty($data))
-        {return 0;}
-        $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`dht22` (c_temp, f_temp, humidity, station_hash, `timestamp`) VALUES (?, ?, ?, ?, ?)");
-        $prep->bindParam(1, $data['temp'][0], PDO::PARAM_STR);
-        $prep->bindParam(2, $data['temp'][1], PDO::PARAM_STR);
-        $prep->bindParam(3, $data['humidity'], PDO::PARAM_STR);
-        $prep->bindParam(4, $this->station_hash, PDO::PARAM_STR);
-        $prep->bindParam(5, $this->timestamp, PDO::PARAM_STR);
-        $prep->execute();
-        return 1;
-    }
-
-    function import_AM2302($data)
-    {
-        if(empty($data))
-        {return 0;}
-
-        $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`am2302` (c_temp, f_temp, humidity, station_hash, `timestamp`) VALUES (?, ?, ?, ?, ?)");
-        $prep->bindParam(1, $data['temp'][0], PDO::PARAM_STR);
-        $prep->bindParam(2, $data['temp'][1], PDO::PARAM_STR);
-        $prep->bindParam(3, $data['humidity'], PDO::PARAM_STR);
-        $prep->bindParam(4, $this->station_hash, PDO::PARAM_STR);
-        $prep->bindParam(5, $this->timestamp, PDO::PARAM_STR);
-        $prep->execute();
-        return 1;
-    }
-
-    function import_ATS($data)
-    {
-        if(empty($data))
-        {return 0;}
-        $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`analog_temp_sensor` (c_temp, f_temp, station_hash, `timestamp`) VALUES (?, ?, ?, ?)");
-        $prep->bindParam(1, $data[0], PDO::PARAM_STR);
-        $prep->bindParam(2, $data[1], PDO::PARAM_STR);
-        $prep->bindParam(3, $this->station_hash, PDO::PARAM_STR);
-        $prep->bindParam(4, $this->timestamp, PDO::PARAM_STR);
-        $prep->execute();
-        return 1;
-    }
-
-    function import_thermistor($data)
-    {
-        if(empty($data))
-        {return 0;}
-        $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`thermistor` (c_temp, f_temp, station_hash, `timestamp`) VALUES (?, ?, ?, ?)");
-        $prep->bindParam(1, $data['temp'][0], PDO::PARAM_STR);
-        $prep->bindParam(2, $data['temp'][1], PDO::PARAM_STR);
-        $prep->bindParam(4, $this->station_hash, PDO::PARAM_STR);
-        $prep->bindParam(5, $this->timestamp, PDO::PARAM_STR);
-        $prep->execute();
-        return 1;
-    }
-
-    function import_photoresistor($data)
-    {
-        if(empty($data))
-        {return 0;}
-        $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`photoresistor` (photolevel, station_hash, `timestamp`) VALUES (?, ?, ?)");
-        $prep->bindParam(1, $data, PDO::PARAM_STR);
-        $prep->bindParam(2, $this->station_hash, PDO::PARAM_STR);
-        $prep->bindParam(3, $this->timestamp, PDO::PARAM_STR);
-        $prep->execute();
-        return 1;
-    }
-
-    function import_power($data)
-    {
-        if(empty($data))
-        {return 0;}
-        $prep = $this->SQL->conn->prepare("INSERT INTO `weather_data`.`power` (voltage, shunt_mV, current_mA, power_mW, station_hash, channel, `timestamp`) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $prep->bindParam(1, $data['voltage'], PDO::PARAM_STR);
-        $prep->bindParam(2, $data['shunt_mV'], PDO::PARAM_STR);
-        $prep->bindParam(3, $data['current_mA'], PDO::PARAM_STR);
-        $prep->bindParam(4, $data['power_mW'], PDO::PARAM_STR);
-        $prep->bindParam(5, $this->station_hash, PDO::PARAM_STR);
-        $prep->bindParam(6, $data['channel'], PDO::PARAM_STR);
-        $prep->bindParam(7, $this->timestamp, PDO::PARAM_STR);
-        $prep->execute();
-        return 1;
-    }
-
-
 
 
     ##########################
@@ -294,157 +230,15 @@ class PiWeMAPI
 
     function read_data()
     {
-        switch(strtolower($_REQUEST['sensor']))
-        {
-            case "dht11":
-                if(@$_REQUEST['limit'])
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `humidity`, `c_temp`, `f_temp` FROM weather_data.dht11 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
-                }else
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `humidity`, `c_temp`, `f_temp` FROM weather_data.dht11 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
-                }
-                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
-                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
-                $prep->execute();
-                $fetch = $prep->fetchAll(2);
-                var_dump($fetch);
-                break;
+        $limit = isset($_REQUEST['limit']) ? (int)$_REQUEST['limit'] : 1;
 
-            case "dht22":
-                if(@$_REQUEST['limit'])
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `humidity`, `c_temp`, `f_temp` FROM weather_data.dht22 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
-                }else
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `humidity`, `c_temp`, `f_temp` FROM weather_data.dht22 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
-                }
-                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
-                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
-                $prep->execute();
-                $fetch = $prep->fetchAll(2);
-                var_dump($fetch);
-                break;
+        if ($limit <= 0) $limit = 1;
+        if ($limit > 100) $limit = 100;
 
-            case "bmp085":
-                if(@$_REQUEST['limit'])
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `pressure`, `c_temp`, `f_temp` FROM weather_data.bmp085 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
-                }else
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `pressure`, `c_temp`, `f_temp` FROM weather_data.bmp085 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
-                }
-                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
-                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
-                $prep->execute();
-                $fetch = $prep->fetchAll(2);
-                var_dump($fetch);
-                break;
-
-            case "bmp180":
-                if(@$_REQUEST['limit'])
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `pressure`, `c_temp`, `f_temp` FROM weather_data.bmp180 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
-                }else
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `pressure`, `c_temp`, `f_temp` FROM weather_data.bmp180 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
-                }
-                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
-                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
-                $prep->execute();
-                $fetch = $prep->fetchAll(2);
-                var_dump($fetch);
-                break;
-
-            case "bmp280":
-                if(@$_REQUEST['limit'])
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `pressure`, `c_temp`, `f_temp` FROM weather_data.bmp280 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
-                }else
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `pressure`, `c_temp`, `f_temp` FROM weather_data.bmp280 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
-                }
-                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
-                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
-                $prep->execute();
-                $fetch = $prep->fetchAll(2);
-                var_dump($fetch);
-                break;
-
-            case "am2302":
-                if(@$_REQUEST['limit'])
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `humidity`, `c_temp`, `f_temp` FROM weather_data.am2302 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
-                }else
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `humidity`, `c_temp`, `f_temp` FROM weather_data.am2302 WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
-                }
-                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
-                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
-                $prep->execute();
-                $fetch = $prep->fetchAll(2);
-                var_dump($fetch);
-                break;
-
-            case "photoresistor":
-                if(@$_REQUEST['limit'])
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `photolevel` FROM weather_data.photoresistor WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
-                }else
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `photolevel` FROM weather_data.photoresistor WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
-                }
-                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
-                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
-                $prep->execute();
-                $fetch = $prep->fetchAll(2);
-                var_dump($fetch);
-                break;
-
-            case "ats":
-                if(@$_REQUEST['limit'])
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `c_temp`, `f_temp` FROM weather_data.analog_temp_sensor WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
-                }else
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `c_temp`, `f_temp` FROM weather_data.analog_temp_sensor WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
-                }
-                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
-                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
-                $prep->execute();
-                $fetch = $prep->fetchAll(2);
-                var_dump($fetch);
-                break;
-
-            case "thermistor":
-                if(@$_REQUEST['limit'])
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `c_temp`, `f_temp` FROM weather_data.thermistor WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
-                }else
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `c_temp`, `f_temp` FROM weather_data.thermistor WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
-                }
-                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
-                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
-                $prep->execute();
-                $fetch = $prep->fetchAll(2);
-                var_dump($fetch);
-                break;
-
-            case "camera":
-                if(@$_REQUEST['limit'])
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `file` FROM weather_data.camera WHERE station_hash = ? ORDER BY `id` DESC LIMIT 100");
-                }else
-                {
-                    $prep = $this->SQL->conn->prepare("SELECT `file` FROM weather_data.camera WHERE station_hash = ? ORDER BY `id` DESC LIMIT 1");
-                }
-                $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
-                #$prep->bindParam(2, $_REQUEST['limit'], PDO::PARAM_INT);
-                $prep->execute();
-                $fetch = $prep->fetchAll(2);
-                var_dump($fetch);
-                break;
-        }
+        $prep = $this->SQL->conn->prepare("SELECT `humidity`, `c_temp`, `f_temp` FROM `".$this->SQL->db."`.`weather_data` WHERE station_hash = ? ORDER BY `id` DESC LIMIT " . $limit);
+        $prep->bindParam(1, $_REQUEST['station_hash'], PDO::PARAM_STR);
+        $prep->execute();
+        $fetch = $prep->fetchAll(2);
+        var_dump($fetch);
     }
 }

@@ -1,3 +1,3 @@
-from PiWeMConfig import *
+from .PiWeMConfig import *
 
 __all__ = ['PiWeMConfig']

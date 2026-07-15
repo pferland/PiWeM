@@ -23,7 +23,7 @@ settings['camera_enabled'] = 0
 settings['analog_wind_vane_enabled'] = 0
 settings['analog_wind_vane_channel'] = 0
 
-mon = PiWeM.PIWEM( settings=settings)
+mon = PiWeM.PiWeM( settings=settings)
 
 use_ina3221 = 1
 sleep = 5

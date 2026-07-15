@@ -5,7 +5,6 @@ import time
 import argparse
 
 # Setup Argument Parser
-parser = argparse.ArgumentParser()
 parser = argparse.ArgumentParser(prog='Rasperry Pi Weather Monitor (PiWeM) ')
 parser.add_argument('--version', action='version', version='%(prog)s 2.0')
 
@@ -17,6 +16,9 @@ parser.add_argument("-v", help="Run Verbosely", action='store_true')
 
 parser.add_argument("--debug", help="Run Debug Mode", action='store_true')
 parser.add_argument("-b", help="Run Debug Mode", action='store_true')
+
+parser.add_argument("--genhash", help="Generate or get station hash", action='store_true')
+parser.add_argument("-f", help="Force new hash generation", action='store_true')
 
 args = parser.parse_args()
 
@@ -31,6 +33,10 @@ text_color = tuple(settings['text_color'].split(",")) # Same for the Text color 
 # Create the main object and set a few extra settings aside from the defaults.
 try:
     mon = PiWeM.PiWeM(settings=settings)
+    if args.verbose or args.v:
+        mon.verbose = 1
+    if args.debug or args.b:
+        mon.debug = 1
 
 except OSError as e:
     print(e.args)
@@ -44,8 +50,8 @@ except ValueError as e:
     sys.exit(1)
 
 try:
-    if args['genhash']:
-        if args['f']:
+    if args.genhash:
+        if args.f:
             mon.generate_station_hash()
         else:
             mon.get_station_hash()
@@ -62,7 +68,7 @@ while 1:
         get_data = mon.get_data_trigger()
         mon.loop_int = mon.loop_int + 1
 
-        if (args.daemon is not None) & (args.d is not None):
+        if args.daemon or args.d:
             print("Sleeping for " + str(mon.sleep_time) + " Seconds.")
             time.sleep(mon.sleep_time)
         else:
@@ -72,7 +78,6 @@ while 1:
         print(e.args)
         print(e.errno)
         print(e.filename)
-        print(e.message)
         print(e.strerror)
         print('IOError, usually is that you have not set either the barometer (bcm085) or PCF8591 address correctly, '
               'or you were messing with the cables while the daemon was running, or the hardware has failed. '
@@ -87,5 +92,4 @@ while 1:
         
     except ValueError as e:
         print(e.args)
-        print(e.message)
         sys.exit(0)
