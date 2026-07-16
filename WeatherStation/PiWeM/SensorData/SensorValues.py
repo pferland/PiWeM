@@ -4,7 +4,7 @@ from . import bmp280_data
 from . import dht11_data
 from . import dht22_data
 from . import am2302_data
-from . import power_data
+
 
 class UploadData:
     def __init__(self):
@@ -36,7 +36,7 @@ class SensorValues:
         self.dht11 = dht11_data.dht11_data()
         self.dht22 = dht22_data.dht22_data()
         self.am2302 = am2302_data.am2302_data()
-        self.power = []
+
 
         self.thermistor = [0.0, 0.0]
         self.analog_temp_sensor = [0.0, 0.0]

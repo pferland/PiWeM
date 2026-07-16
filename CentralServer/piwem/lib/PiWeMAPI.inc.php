@@ -159,16 +159,6 @@ class PiWeMAPI
                 $photolevel = (int)$data['photoresistor'];
             }
 
-            // 5. Power monitoring
-            if (isset($data['power']) && is_array($data['power'])) {
-                $p = $data['power'];
-                $voltage = isset($p['voltage']) ? (float)$p['voltage'] : 0.0;
-                $shunt_mV = isset($p['shunt_mV']) ? (float)$p['shunt_mV'] : 0.0;
-                $current_mA = isset($p['current_mA']) ? (int)$p['current_mA'] : 0;
-                $power_mW = isset($p['power_mW']) ? (float)$p['power_mW'] : 0.0;
-                $power_channel = isset($p['channel']) ? (int)$p['channel'] : 0;
-            }
-
             // 6. Wind monitoring
             if (isset($data['wind']) && is_array($data['wind'])) {
                 $w = $data['wind'];
@@ -179,7 +169,7 @@ class PiWeMAPI
 
         // Insert consolidated sensor row
         $prep = $this->SQL->conn->prepare("INSERT INTO `".$this->SQL->db."`.`weather_data` 
-            (pressure, altitude, photolevel, c_temp, f_temp, humidity, voltage, shunt_mV, current_mA, power_mW, power_channel, wind_mps, wind_direction, timestamp, station_hash) 
+            (pressure, altitude, photolevel, c_temp, f_temp, humidity, wind_mps, wind_direction, timestamp, station_hash)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         $prep->bindParam(1, $pressure);
@@ -188,15 +178,10 @@ class PiWeMAPI
         $prep->bindParam(4, $c_temp, PDO::PARAM_INT);
         $prep->bindParam(5, $f_temp, PDO::PARAM_INT);
         $prep->bindParam(6, $humidity, PDO::PARAM_INT);
-        $prep->bindParam(7, $voltage);
-        $prep->bindParam(8, $shunt_mV);
-        $prep->bindParam(9, $current_mA, PDO::PARAM_INT);
-        $prep->bindParam(10, $power_mW);
-        $prep->bindParam(11, $power_channel, PDO::PARAM_INT);
-        $prep->bindParam(12, $wind_mps);
-        $prep->bindParam(13, $wind_direction, PDO::PARAM_INT);
-        $prep->bindParam(14, $timestamp, PDO::PARAM_STR);
-        $prep->bindParam(15, $station_hash, PDO::PARAM_STR);
+        $prep->bindParam(7, $wind_mps);
+        $prep->bindParam(8, $wind_direction, PDO::PARAM_INT);
+        $prep->bindParam(9, $timestamp, PDO::PARAM_STR);
+        $prep->bindParam(10, $station_hash, PDO::PARAM_STR);
 
         $prep->execute();
 

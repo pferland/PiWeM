@@ -129,7 +129,6 @@ class PiWeM:
         self.pressure_flag = settings['pressure_flag']
         self.humidity_flag = settings['humidity_flag']
 
-        self.power_monitor = int(settings['power_monitor'])
         self.bmp085_enabled = int(settings['bmp085_enabled'])
         self.bmp180_enabled = int(settings['bmp180_enabled'])
         self.bmp280_enabled = int(settings['bmp280_enabled'])
@@ -162,9 +161,6 @@ class PiWeM:
 
         self.loop_int = 0
         self.sleep_time = int(settings['sleep_time'])
-
-        self.INA219_address = int(settings['ina219_address'], 16)
-        self.INA3221_address = int(settings['ina3221_address'], 16)
 
         self.am2302_pin = settings['am2302_pin']
         self.dht11_pin = settings['dht11_pin']
@@ -214,6 +210,9 @@ class PiWeM:
         return 0
 
     def get_station_key(self):
+        if not (self.localstorage or self.bufferlocally):
+            self.station_key = self.__settings.get('station_key', '')
+            return 0
         self.conn.execute("select `station_key` from weather_data.Stations where station_hash = %s", (self.station_hash,))
         ret = self.conn.fetchall()
         if not ret:
@@ -496,29 +495,17 @@ class PiWeM:
             ])
             self.db.commit()
 
-        if self.power_monitor:
-            if self.debug:
-                print("power monitor data")
-
-            insert_array = []
-            for i in range(len(self.sensor_values.power)):
-                p = self.sensor_values.power[i]
-                insert_array.append((self.station_hash, p.channel, p.shunt_mV, p.voltage,
-                 p.current_mA, p.power_mW,
-                 self.sensor_values.timestamp))
-
-            if len(insert_array) > 0:
-                self.conn.executemany(
-                    "INSERT INTO weather_data.power_monitor ( station_hash, `channel`, `shunt_mV`, `voltage`, `current_mA`, "
-                    "`power_mW`, `timestamp` ) VALUES ( %s, %s, %s, %s, %s, %s, %s) ",
-                    insert_array
-                )
-                self.db.commit()
         return 0
 
     def get_cpu_temperature(self):
-        res = os.popen('vcgencmd measure_temp').readline()
-        return(res.replace("temp=","").replace("'C\n",""))
+        try:
+            res = os.popen('vcgencmd measure_temp').readline()
+            val = res.replace("temp=","").replace("'C\n","").strip()
+            if val:
+                return val
+        except Exception:
+            pass
+        return "0.0"
 
     def get_am2302_data(self):
         if self.am2302_enabled:
@@ -701,14 +688,6 @@ class PiWeM:
             except:
                 self.sensor_values.fetch_error.append(sys.exc_info()[0])
 
-        if self.power_monitor:
-            if self.verbose:
-                sys.stdout.write("Power, ")
-                sys.stdout.flush()
-            try:
-                self.get_power_data()
-            except:
-                self.sensor_values.fetch_error.append(sys.exc_info()[0])
 
         if self.wind_enabled:
             if self.analog_wind_vane_enabled:

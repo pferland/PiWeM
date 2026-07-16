@@ -1,4 +1,4 @@
-from .PiWeM import PiWeM
+from . import PiWeM
 from . import SensorData
 from . import Payload
 from . import bmp280

@@ -1,4 +1,4 @@
-﻿{include file="header.tpl"}
+{include file="header.tpl"}
 	<table>
 		<tr>
 		{foreach from=$stations item="station"}
@@ -21,7 +21,7 @@
 						</tr>
 					{/if}
 
-					{if $key eq 'dht11' or $key eq 'dht22' or $key eq 'am3202'}
+					{if $key eq 'dht11' or $key eq 'dht22' or $key eq 'am2302' or $key eq 'am3202'}
 						<tr class="sensor_header">
 							<th colspan="2">{$key}</th>
 						</tr>

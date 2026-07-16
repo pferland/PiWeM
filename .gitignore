@@ -148,3 +148,4 @@ dummy_data.sql
 import.py
 settings.ini
 code_analysis.md
+/CentralServer/piwem/smarty/templates_c

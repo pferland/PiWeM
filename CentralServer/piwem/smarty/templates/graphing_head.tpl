@@ -8,7 +8,7 @@
 		google.load("visualization", "1", {ldelim}packages:["corechart"] {rdelim});
 
 		{foreach from=$station_data.sensors item=sensor}  <!-- loop through each sensor -->
-		{if $sensor.name eq 'dht11' || $sensor.name eq 'dht22'} <!-- detech the sensor -->
+		{if $sensor.name eq 'dht11' || $sensor.name eq 'dht22' || $sensor.name eq 'am2302'} <!-- detech the sensor -->
 		<!-- We need to create a graph function for the two different data values, as tempurature and Humidity wil not always be on the same scale. -->
 		function drawChart_{$sensor.name}_humidity() {ldelim}
 
@@ -163,7 +163,7 @@
 
 
 
-		{elseif $sensor.name eq 'analog_temp_sensor'}
+		{elseif $sensor.name eq 'analog_temp_sensor' || $sensor.name eq 'thermistor' || $sensor.name eq 'db18s20'}
 		function drawChart_{$sensor.name}() {ldelim}
 
 			var options_{$sensor.name} = {ldelim}

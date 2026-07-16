@@ -76,20 +76,41 @@ class PiWeMFront
 
         switch ($sensor) {
             case 'dht11':
+                $cols = array('c_temp', 'f_temp', 'humidity', 'timestamp');
+                $not_zero_field = "humidity";
+                break;
             case 'dht22':
+                $cols = array('c_temp', 'f_temp', 'humidity', 'timestamp');
+                $not_zero_field = "humidity";
+                break;
             case 'am2302':
+                $cols = array('c_temp', 'f_temp', 'humidity', 'timestamp');
+                $not_zero_field = "humidity";
+                break;
             case 'am3202':
                 $cols = array('c_temp', 'f_temp', 'humidity', 'timestamp');
                 $not_zero_field = "humidity";
                 break;
             case 'bmp085':
+                $cols = array('c_temp', 'f_temp', 'pressure', 'altitude', 'timestamp');
+                $not_zero_field = "pressure";
+                break;
             case 'bmp180':
+                $cols = array('c_temp', 'f_temp', 'pressure', 'altitude', 'timestamp');
+                $not_zero_field = "pressure";
+                break;
             case 'bmp280':
                 $cols = array('c_temp', 'f_temp', 'pressure', 'altitude', 'timestamp');
                 $not_zero_field = "pressure";
                 break;
             case 'analog_temp_sensor':
+                $cols = array('c_temp', 'f_temp', 'timestamp');
+                $not_zero_field = "c_temp";
+                break;
             case 'thermistor':
+                $cols = array('c_temp', 'f_temp', 'timestamp');
+                $not_zero_field = "c_temp";
+                break;
             case 'db18s20':
                 $cols = array('c_temp', 'f_temp', 'timestamp');
                 $not_zero_field = "c_temp";
@@ -153,36 +174,4 @@ class PiWeMFront
         }
         return $fetch;
     }
-
-    function GetStationPower($station_hash = "", $limit = 500, $order = "DESC")
-    {
-        $order = (strtoupper($order) === "ASC") ? "ASC" : "DESC";
-        $ret = array();
-        
-        $prep = $this->SQL->conn->prepare("SELECT `shunt_mV`, `voltage`, `timestamp` FROM `" . $this->SQL->db . "`.`weather_data` WHERE station_hash = ? AND (`voltage` != 0 OR `shunt_mV` != 0) ORDER BY id $order LIMIT " . (int)$limit);
-        $prep->bindParam(1, $station_hash, PDO::PARAM_STR);
-        $prep->execute();
-        $ret['voltage'] = $prep->fetchAll(2);
-        if ($this->debug) {
-            var_dump($ret['voltage']);
-        }
-        
-        $prep = $this->SQL->conn->prepare("SELECT `current_mA`, `timestamp` FROM `" . $this->SQL->db . "`.`weather_data` WHERE station_hash = ? AND (`voltage` != 0 OR `shunt_mV` != 0) ORDER BY id $order LIMIT " . (int)$limit);
-        $prep->bindParam(1, $station_hash, PDO::PARAM_STR);
-        $prep->execute();
-        $ret['current'] = $prep->fetchAll(2);
-        if ($this->debug) {
-            var_dump($ret['current']);
-        }
-        
-        $prep = $this->SQL->conn->prepare("SELECT `power_mW`, `timestamp` FROM `" . $this->SQL->db . "`.`weather_data` WHERE station_hash = ? AND (`voltage` != 0 OR `shunt_mV` != 0) ORDER BY id $order LIMIT " . (int)$limit);
-        $prep->bindParam(1, $station_hash, PDO::PARAM_STR);
-        $prep->execute();
-        $ret['power'] = $prep->fetchAll(2);
-        if ($this->debug) {
-            var_dump($ret['power']);
-        }
-        return $ret;
-    }
-
 }
