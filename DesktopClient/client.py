@@ -63,6 +63,10 @@ class SettingsDialog(QDialog):
         self.setMinimumWidth(400)
         settings_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "settings.ini")
         self.settings = QSettings(settings_path, QSettings.Format.IniFormat)
+        
+        geom = self.settings.value("settings_dialog_geometry")
+        if geom is not None:
+            self.restoreGeometry(geom)
 
         layout = QVBoxLayout()
         form_layout = QFormLayout()
@@ -134,7 +138,194 @@ class SettingsDialog(QDialog):
         self.settings.setValue("server_url", self.url_input.text().strip())
         self.settings.setValue("station_hash", self.hash_input.text().strip())
         self.settings.setValue("station_key", self.key_input.text().strip())
+        self.settings.setValue("settings_dialog_geometry", self.saveGeometry())
         self.accept()
+
+    def closeEvent(self, event):
+        self.settings.setValue("settings_dialog_geometry", self.saveGeometry())
+        super().closeEvent(event)
+
+
+def calculate_moving_average(values, window=5):
+    sma = []
+    for i in range(len(values)):
+        start = max(0, i - window + 1)
+        sub_list = values[start : i + 1]
+        sma.append(sum(sub_list) / len(sub_list))
+    return sma
+
+
+class QPainterChartWidget(QtWidgets.QWidget):
+    def __init__(self, values, timestamps, title, field_name, unit, parent=None):
+        super().__init__(parent)
+        self.values = values
+        self.timestamps = timestamps
+        self.title = title
+        self.field_name = field_name
+        self.unit = unit
+        self.setMinimumSize(600, 400)
+        self.sma_values = calculate_moving_average(self.values, window=5)
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        
+        w = self.width()
+        h = self.height()
+        
+        pad_left = 70
+        pad_right = 30
+        pad_top = 50
+        pad_bottom = 50
+        
+        chart_w = w - pad_left - pad_right
+        chart_h = h - pad_top - pad_bottom
+        
+        # Draw background
+        painter.setBrush(QtGui.QBrush(QtGui.QColor("#1e1e24")))
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        painter.drawRect(0, 0, w, h)
+        
+        # Draw grid
+        min_val = min(self.values)
+        max_val = max(self.values)
+        val_range = max_val - min_val
+        if val_range == 0:
+            val_range = 1.0
+            
+        num_grid_lines = 4
+        grid_pen = QtGui.QPen(QtGui.QColor("#2d2d3a"), 1, QtCore.Qt.PenStyle.DashLine)
+        text_pen = QtGui.QPen(QtGui.QColor("#888898"))
+        
+        font = QtGui.QFont("Segoe UI", 9)
+        painter.setFont(font)
+        
+        for i in range(num_grid_lines + 1):
+            y_ratio = i / num_grid_lines
+            y_coord = pad_top + chart_h - (y_ratio * chart_h)
+            
+            painter.setPen(grid_pen)
+            painter.drawLine(pad_left, int(y_coord), pad_left + chart_w, int(y_coord))
+            
+            painter.setPen(text_pen)
+            val = min_val + y_ratio * val_range
+            painter.drawText(10, int(y_coord) - 10, pad_left - 20, 20, QtCore.Qt.AlignmentFlag.AlignRight, f"{val:.2f}")
+            
+        # Draw timestamps
+        if self.timestamps:
+            painter.setPen(text_pen)
+            indices = [0, len(self.timestamps) // 2, len(self.timestamps) - 1]
+            indices = sorted(list(set(indices)))
+            for idx in indices:
+                ts = str(self.timestamps[idx])
+                if " " in ts:
+                    ts = ts.split(" ")[1][:8]
+                elif "T" in ts:
+                    ts = ts.split("T")[1][:8]
+                else:
+                    ts = ts[:8]
+                
+                x_ratio = idx / (len(self.timestamps) - 1) if len(self.timestamps) > 1 else 0.5
+                x_coord = pad_left + x_ratio * chart_w
+                rect = QtCore.QRect(int(x_coord) - 40, h - pad_bottom + 10, 80, 20)
+                painter.drawText(rect, QtCore.Qt.AlignmentFlag.AlignCenter, ts)
+
+        # Plot Lines
+        line_pen = QtGui.QPen(QtGui.QColor("#00bcd4"), 2)
+        sma_pen = QtGui.QPen(QtGui.QColor("#eab308"), 2, QtCore.Qt.PenStyle.DashLine)
+        
+        points = []
+        sma_points = []
+        for idx, val in enumerate(self.values):
+            x_ratio = idx / (len(self.values) - 1) if len(self.values) > 1 else 0.5
+            x = pad_left + x_ratio * chart_w
+            
+            y_ratio = (val - min_val) / val_range
+            y = pad_top + chart_h - (y_ratio * chart_h)
+            points.append(QtCore.QPointF(x, y))
+            
+            sma_val = self.sma_values[idx]
+            sma_y_ratio = (sma_val - min_val) / val_range
+            sma_y = pad_top + chart_h - (sma_y_ratio * chart_h)
+            sma_points.append(QtCore.QPointF(x, sma_y))
+            
+        path = QtGui.QPainterPath()
+        if points:
+            path.moveTo(points[0])
+            for pt in points[1:]:
+                path.lineTo(pt)
+            painter.setPen(line_pen)
+            painter.drawPath(path)
+            
+        sma_path = QtGui.QPainterPath()
+        if sma_points:
+            sma_path.moveTo(sma_points[0])
+            for pt in sma_points[1:]:
+                sma_path.lineTo(pt)
+            painter.setPen(sma_pen)
+            painter.drawPath(sma_path)
+
+        # Draw Title
+        title_pen = QtGui.QPen(QtGui.QColor("#ffffff"))
+        painter.setPen(title_pen)
+        title_font = QtGui.QFont("Segoe UI", 12, QtGui.QFont.Weight.Bold)
+        painter.setFont(title_font)
+        painter.drawText(pad_left, 15, chart_w, 30, QtCore.Qt.AlignmentFlag.AlignCenter, f"{self.title} - {self.field_name} ({self.unit})")
+
+
+class ChartDialog(QDialog):
+    def __init__(self, values, timestamps, title, field_name, unit, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(f"Historical Chart: {field_name}")
+        self.setMinimumSize(650, 480)
+        
+        settings_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "settings.ini")
+        self.settings = QSettings(settings_path, QSettings.Format.IniFormat)
+        
+        geom = self.settings.value("chart_dialog_geometry")
+        if geom is not None:
+            self.restoreGeometry(geom)
+            
+        layout = QVBoxLayout()
+        self.chart_widget = QPainterChartWidget(values, timestamps, title, field_name, unit, self)
+        layout.addWidget(self.chart_widget)
+        
+        stats_group = QGroupBox("Chart Stats & Legend")
+        stats_layout = QHBoxLayout()
+        
+        legend_lbl = QLabel(
+            f"<b>Legend:</b> <font color='#00bcd4'>— Actual</font> &nbsp;&nbsp;&nbsp;&nbsp; "
+            f"<font color='#eab308'>- - 5-Point SMA</font>"
+        )
+        legend_lbl.setStyleSheet("font-size: 12px;")
+        stats_layout.addWidget(legend_lbl)
+        
+        stats_layout.addStretch()
+        
+        avg_val = sum(values) / len(values) if values else 0.0
+        cur_val = values[-1] if values else 0.0
+        min_val = min(values) if values else 0.0
+        max_val = max(values) if values else 0.0
+        
+        stats_text = (
+            f"Min: <b>{min_val:.2f}</b> | Max: <b>{max_val:.2f}</b> | "
+            f"Current: <b>{cur_val:.2f}</b> | Avg: <b>{avg_val:.2f}</b>"
+        )
+        stats_lbl = QLabel(stats_text)
+        stats_lbl.setStyleSheet("font-size: 12px; color: #e0e0e6;")
+        stats_layout.addWidget(stats_lbl)
+        
+        stats_group.setLayout(stats_layout)
+        layout.addWidget(stats_group)
+        
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.accept)
+        layout.addWidget(close_btn)
+        self.setLayout(layout)
+
+    def closeEvent(self, event):
+        self.settings.setValue("chart_dialog_geometry", self.saveGeometry())
+        super().closeEvent(event)
 
 
 class MainWindow(QMainWindow):
@@ -309,6 +500,32 @@ class MainWindow(QMainWindow):
         refresh_layout.addWidget(self.refresh_cb)
         right_layout.addLayout(refresh_layout)
 
+        # Historical Charts control group
+        self.charts_group = QGroupBox("Historical Telemetry Charts")
+        charts_layout = QHBoxLayout()
+        
+        charts_layout.addWidget(QLabel("Field:"))
+        self.field_combo = QtWidgets.QComboBox()
+        self.field_combo.addItems([
+            "Temperature (C)", "Temperature (F)", "Humidity", 
+            "Pressure", "Altitude", "Light", "Wind Speed"
+        ])
+        charts_layout.addWidget(self.field_combo)
+        
+        charts_layout.addWidget(QLabel("Range:"))
+        self.range_combo = QtWidgets.QComboBox()
+        self.range_combo.addItems([
+            "1 Hour", "12 Hours", "24 Hours", "7 Days", "30 Days"
+        ])
+        charts_layout.addWidget(self.range_combo)
+        
+        self.plot_btn = QPushButton("Plot Chart")
+        self.plot_btn.clicked.connect(self.generate_chart)
+        charts_layout.addWidget(self.plot_btn)
+        
+        self.charts_group.setLayout(charts_layout)
+        right_layout.addWidget(self.charts_group)
+
         main_layout.addLayout(right_layout, stretch=3)
 
         self.statusBar().showMessage("Ready. Configure Connection settings to retrieve weather data.")
@@ -429,6 +646,74 @@ class MainWindow(QMainWindow):
         else:
             self.refresh_timer.stop()
             self.statusBar().showMessage("Auto-Refresh disabled.")
+
+    def generate_chart(self):
+        selected_ranges = self.station_table.selectedRanges()
+        if not selected_ranges:
+            QMessageBox.warning(self, "No Station Selected", "Please select a weather station from the list first.")
+            return
+
+        row = selected_ranges[0].topRow()
+        name_item = self.station_table.item(row, 0)
+        station_hash = name_item.data(QtCore.Qt.ItemDataRole.UserRole)
+        station_name = name_item.text()
+        
+        field_text = self.field_combo.currentText()
+        range_text = self.range_combo.currentText()
+        
+        field_mappings = {
+            "Temperature (C)": ("c_temp", "Temperature", "°C"),
+            "Temperature (F)": ("f_temp", "Temperature", "°F"),
+            "Humidity": ("humidity", "Humidity", "%"),
+            "Pressure": ("pressure", "Pressure", "Pa"),
+            "Altitude": ("altitude", "Altitude", "m"),
+            "Light": ("photolevel", "Photo Level", "Photolevel"),
+            "Wind Speed": ("wind_mps", "Wind Speed", "m/s")
+        }
+        
+        range_mappings = {
+            "1 Hour": "1 HOUR",
+            "12 Hours": "12 HOUR",
+            "24 Hours": "24 HOUR",
+            "7 Days": "7 DAY",
+            "30 Days": "30 DAY"
+        }
+        
+        api_field, label, unit = field_mappings[field_text]
+        limit = range_mappings[range_text]
+        
+        self.statusBar().showMessage(f"Fetching historical data for {label}...")
+        try:
+            records = self.make_api_request("readdata", {"target_hash": station_hash, "limit": limit})
+            if not records:
+                QMessageBox.information(self, "No Data", f"No telemetry recorded for field '{label}' in range '{range_text}'.")
+                self.statusBar().showMessage("No data points found.")
+                return
+                
+            records.reverse()
+            
+            values = []
+            timestamps = []
+            for r in records:
+                val = r.get(api_field)
+                if val is not None:
+                    try:
+                        values.append(float(val))
+                        timestamps.append(r.get("timestamp", ""))
+                    except ValueError:
+                        pass
+                        
+            if not values:
+                QMessageBox.information(self, "No Numeric Data", f"No numeric data found for field '{label}' in the retrieved range.")
+                self.statusBar().showMessage("No valid data points found.")
+                return
+                
+            dialog = ChartDialog(values, timestamps, station_name, label, unit, self)
+            dialog.exec()
+            self.statusBar().showMessage("Chart generated successfully.")
+        except Exception as e:
+            QMessageBox.critical(self, "Failed to Plot Chart", f"Error generating chart: {e}")
+            self.statusBar().showMessage(f"Failed to generate chart: {e}")
 
     def closeEvent(self, event):
         self.settings.setValue("geometry", self.saveGeometry())

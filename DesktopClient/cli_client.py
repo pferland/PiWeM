@@ -385,6 +385,25 @@ class PiWeMShell(cmd.Cmd):
         except Exception as e:
             print(f"{COLOR_RED}Error: {e}{COLOR_RESET}")
 
+    def do_live(self, arg):
+        """Enter full-screen live telemetry monitoring (refreshes every 10 seconds).\nPress Ctrl+C to exit.\nUsage: live"""
+        if not self.selected_station:
+            print(f"{COLOR_RED}Error: No station selected. Run 'list' then 'select' first.{COLOR_RESET}")
+            return
+
+        print(f"{COLOR_CYAN}Starting live monitoring. Press Ctrl+C to exit...{COLOR_RESET}")
+        import time
+        time.sleep(0.5)
+
+        try:
+            while True:
+                os.system('clear' if os.name != 'nt' else 'cls')
+                print(f"{COLOR_BOLD}{COLOR_CYAN}PiWeM Live Telemetry Monitor (Auto-refresh: 10s | Ctrl+C to exit){COLOR_RESET}")
+                self.do_telemetry("")
+                time.sleep(10)
+        except KeyboardInterrupt:
+            print(f"\n{COLOR_GREEN}Live monitoring stopped.{COLOR_RESET}\n")
+
     def do_plot(self, arg):
         """Plot historical chart for a specific sensor field.\nUsage: plot <field> [limit_or_interval]\n\nAvailable Fields:\n  c_temp, f_temp, humidity, pressure, altitude, photolevel, wind_mps"""
         if not self.selected_station:
@@ -474,6 +493,7 @@ class PiWeMShell(cmd.Cmd):
     do_sel = do_select
     do_tel = do_telemetry
     do_graph = do_plot
+    do_watch = do_live
 
 
 if __name__ == '__main__':

@@ -37,12 +37,14 @@ PiWeM is a highly configurable, modern system of PHP frontend services, database
 ### 5. Desktop GUI Client
 * A fully functional GUI client (`client.py`) supporting PyQt6, PyQt5, and PySide2 fallbacks.
 * Features a premium dark mode stylesheet, active station lists, automatic refresh toggles, and real-time telemetry panels.
+* **QPainter Vector Plotting**: Supports rendering historical line charts (with 5-Point Simple Moving Average dashed lines and minimum, maximum, current, and average statistics) dynamically via built-in `QPainter` graphics.
 
 ### 6. Interactive CLI Client & Plotter
 * Added an interactive command-line client (`cli_client.py`) utilizing Python's standard `cmd` module.
 * Runs in any standard terminal shell with **zero external dependencies**.
 * **Integrated ASCII Plotting**: Plots high-resolution charts in the terminal (with 5-Point Simple Moving Average curves `~` and statistics) for fields like temperature, humidity, pressure, and wind speed.
 * Safe string formatting handling prevents crashes from database `NULL` values.
+* **Live Shell Watch**: Added the `live` (alias `watch`) command, enabling a full-screen, 10-second auto-refresh terminal monitoring panel.
 
 ---
 
@@ -54,7 +56,6 @@ PiWeM is a highly configurable, modern system of PHP frontend services, database
   * DHT11, DHT22, AM2302
   * BMP085, BMP180, BMP280
   * PCF8591 (8-bit 4-channel A/D converter for photoresistors, analog thermistors, etc.)
-  * PiCamera (for sky capturing)
   * Anemometer / Wind direction sensors
 
 ### Central Server (WWW & API)
@@ -66,7 +67,7 @@ PiWeM is a highly configurable, modern system of PHP frontend services, database
 
 ### Desktop Clients
 * Python 3
-* *For GUI Client:* PyQt6, PyQt5, or PySide2 (optional)
+* *For GUI Client:* PyQt6
 * *For CLI Client:* Standard Python library only (no external packages required)
 
 ---
@@ -137,6 +138,7 @@ Launch the interactive telemetry shell from the `DesktopClient` folder:
   * *Fields:* `c_temp`, `f_temp`, `humidity`, `pressure`, `altitude`, `photolevel`, `wind_mps`
   * *Intervals:* `12 HOURS`, `24 HOURS`, `7 DAYS`, or limit numbers (default: `24 HOUR`).
   * *Example:* `plot pressure 24 HOURS`
+* **`live`** (or **`watch`**): Enters full-screen monitoring mode, automatically clearing the screen and updating telemetry every 10 seconds. Exit with `Ctrl+C`.
 * **`settings`**: View or update server URLs and credentials.
 * **`exit`** (or **`quit`**): Exits the shell.
 
