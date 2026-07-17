@@ -1,0 +1,117 @@
+{% include 'graphing_head.twig' %}
+<table style="width: 100%;">
+	<tr>
+		<td style=" height:29px">
+			<form method="get" action="station.php">
+				<label for="station_select" style="font-weight: bold;">Station: </label>
+				<select id="station_select" name="station_hash" onchange="this.form.submit()">
+					{% for s in stations %}
+						<option value="{{ s.station_hash }}" {% if s.station_hash == station_data.station_hash %}selected{% endif %}>{{ s.station_name }}</option>
+					{% endfor %}
+				</select>
+				
+				<label for="limit_select" style="margin-left: 20px; font-weight: bold;">Show: </label>
+				<select id="limit_select" name="limit" onchange="this.form.submit()">
+					<option value="30 MINUTE" {% if limit == '30 MINUTE' %}selected{% endif %}>Last 30 Minutes</option>
+					<option value="1 HOUR" {% if limit == '1 HOUR' %}selected{% endif %}>Last Hour</option>
+					<option value="12 HOUR" {% if limit == '12 HOUR' %}selected{% endif %}>Last 12 Hours</option>
+					<option value="24 HOUR" {% if limit == '24 HOUR' %}selected{% endif %}>Last 24 Hours</option>
+					<option value="7 DAY" {% if limit == '7 DAY' %}selected{% endif %}>Last 7 Days</option>
+					<option value="30 DAY" {% if limit == '30 DAY' %}selected{% endif %}>Last 30 Days</option>
+					<option value="all" {% if limit == 'all' %}selected{% endif %}>All History</option>
+				</select>
+			</form>
+		</td>
+	</tr>
+	<tr>
+		<td style="height: 100%">
+			<table style="width: 100%">
+				<tr>
+					<td style="width: 50%; vertical-align:top; text-align:left;">
+						<ul>
+							<li>
+								Station Name: {{ station_data.station_name }}
+							</li>
+							<li>
+								Last Update: {{ station_data.lastupdate }}
+							</li>
+							<li>
+								Altitude: {{ station_data.altitude }} Meters
+							</li>
+						</ul>
+					</td>
+
+					<td style="width: 50%; text-align:right">
+						{% if camera_enabled == 1 %}
+						<img src="{{ camera.image_tn_path }}" height="320px">
+						{% endif %}
+					</td>
+				</tr>
+				{% for sensor in station_data.sensors %}
+					<th><br><br><h2>{{ sensor.name }}</h2></th>
+					{% if sensor.name == 'dht11' or sensor.name == 'dht22' or sensor.name == 'am2302' %} <!-- detect the sensor -->
+						<tr>
+							<th>Humidity</th>
+						</tr>
+						<tr>
+							<td style="height:300px; vertical-align: top" colspan="2">
+								<div id="chart_div_{{ sensor.name }}_humidity" style="width: 100%; height: 100%; vertical-align: top"></div>
+							</td>
+						</tr>
+						<tr>
+							<th>Temperature</th>
+						</tr>
+						<tr>
+							<td style="height:300px; vertical-align: top" colspan="2">
+								<div id="chart_div_{{ sensor.name }}_temp" style="width: 100%; height: 100%; vertical-align: top"></div>
+								<img height="25" border="0">
+							</td>
+						</tr>
+
+					{% elseif sensor.name == 'bmp085' or sensor.name == 'bmp180' or sensor.name == 'bmp280' %}
+						<tr>
+							<th>Pressure</th>
+						</tr>
+						<tr>
+							<td style="height:300px; vertical-align: top" colspan="2">
+								<div id="chart_div_{{ sensor.name }}_pressure" style="width: 100%; height: 100%; vertical-align: top"></div>
+							</td>
+						</tr>
+						<tr>
+							<th>Temperature</th>
+						</tr>
+						<tr>
+							<td style="height:300px; vertical-align: top" colspan="2">
+								<div id="chart_div_{{ sensor.name }}_temp" style="width: 100%; height: 100%; vertical-align: top"></div>
+								<img height="25" border="0">
+							</td>
+						</tr>
+
+					{% elseif sensor.name == 'analog_temp_sensor' or sensor.name == 'thermistor' or sensor.name == 'db18s20' %}
+						<tr>
+							<th>Temperature</th>
+						</tr>
+						<tr>
+							<td style="height:300px; vertical-align: top" colspan="2">
+								<div id="chart_div_{{ sensor.name }}" style="width: 100%; height: 100%; vertical-align: top"></div>
+								<img height="25" border="0">
+							</td>
+						</tr>
+
+					{% elseif sensor.name == 'photoresistor' %}
+						<tr>
+							<th>PhotoLevel</th>
+						</tr>
+						<tr>
+							<td style="height:300px; vertical-align: top" colspan="2">
+								<div id="chart_div_{{ sensor.name }}" style="width: 100%; height: 100%; vertical-align: top"></div>
+								<img height="25" border="0">
+							</td>
+						</tr>
+					{% endif %}
+				{% endfor %}
+			</table>
+		</td>
+	</tr>
+</table>
+{% include 'footer.twig' %}

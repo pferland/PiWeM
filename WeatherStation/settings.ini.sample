@@ -14,16 +14,19 @@ sql_password = toor
 ;Location of the Central PiWem Server.
 piwem_central_server = http://dev.randomintervals.com
 
+;Unique UUID identifying this Weather Station
+station_hash = 'REPLACE_WITH_HASH_GENERATED_ON_REGISTRATION'
+
 ;Central Collection server API Key
-station_key = 'REPLACE_WITH_KEY_GENERATED_FROM_RegisterNode.php'
+station_key = 'REPLACE_WITH_KEY_GENERATED_FROM_REGISTRATION'
 
 ;Upload data to the PiWem Central Server Defined above.
 upload_to_central_server = 0
 
-#Upload sensor data to the Weahter Underground PWS API
+#Upload sensor data to the Weather Underground PWS API
 upload_to_weather_underground = 0
 
-# URL for the Weahter Underground PWS API
+# URL for the Weather Underground PWS API
 wu_url = https://weatherstation.wunderground.com/weatherstation/updateweatherstation.php
 
 # Station ID for the Weather Underground PWS API
@@ -39,10 +42,10 @@ localstorage = 1
 bufferlocally = 0
 
 ;How long til the next run of the loop to get data if running in daemon mode
-sleep_time = 3600
+sleep_time = 900
 
-;Enable or disables devices completely (well minus power, just to PiWeM)
 
+;Enable or disables device support
 ;8-bit 4 channel Analog to Digital converter that uses I2C
 pcf8591_enabled = 0
 
@@ -126,7 +129,7 @@ bmp280_address = 0x76
 ; Thermistor channel on the PCF8591
 thermistor_channel = 2
 
-; Digital Termperature Sensor DS18b20 GPIO pin
+; Digital Temperature Sensor DS18b20 GPIO pin
 ds18b20_pin = 22
 
 ; Analog Temperature Sensor channel on the PCF8591
@@ -148,7 +151,7 @@ text_font = /opt/vc/src/hello_pi/hello_font/Vera.ttf
 text_color = 255,0,0
 
 ;Output path for the final images with data
-output_path = /home/pi/Outputs/done/
+output_path = /opt/piwem/Outputs/done/
 
 ;Temp path for the camera to save the pre-data images.
 tmp_dir = /tmp/

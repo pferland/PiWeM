@@ -1,6 +1,10 @@
+import sys
+import os
+# Ensure imports work from the script's directory first
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from PiWeMConfig.PiWeMConfig import PiWeMConfig
 from PiWeM import PiWeM
-import sys
 import time
 import argparse
 

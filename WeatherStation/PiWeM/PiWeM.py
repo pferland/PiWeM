@@ -195,7 +195,17 @@ class PiWeM:
             print("Station Key: " + self.station_key)
 
     def get_station_hash(self):
-        if not os.path.isfile("station_hash.txt"):
+        # 1. Try to read from settings.ini
+        self.station_hash = self.__settings.get('station_hash', '').strip()
+        
+        # 2. Fallback to station_hash.txt if settings.ini has no hash or is a placeholder
+        if not self.station_hash or self.station_hash == "REPLACE_WITH_HASH_GENERATED_ON_REGISTRATION" or self.station_hash == "'REPLACE_WITH_HASH_GENERATED_ON_REGISTRATION'":
+            if os.path.isfile("station_hash.txt"):
+                with open('station_hash.txt', 'r') as station_hash_file:
+                    self.station_hash = station_hash_file.read().strip()
+            
+        # 3. If still empty/invalid, raise registration error
+        if not self.station_hash or self.station_hash == "REPLACE_WITH_HASH_GENERATED_ON_REGISTRATION" or self.station_hash == "'REPLACE_WITH_HASH_GENERATED_ON_REGISTRATION'":
             print("\n==========================================================================")
             print(" ERROR: This Raspberry Pi station is not registered.")
             print(f" Please register the station in the database first.")
@@ -203,10 +213,7 @@ class PiWeM:
             print("(piwem) piwem@weather_station:/opt/piwem $ python register.py")
             print("\n==========================================================================")
             sys.exit()
-        else:
-            station_hash_file = open('station_hash.txt', 'r')
-            self.station_hash = station_hash_file.read()
-            station_hash_file.close()
+            
         return 0
 
     def get_station_key(self):
@@ -354,15 +361,15 @@ class PiWeM:
             print("--------- Insert Data values for self.sensor_values.*  ------------")
             print("")
             print("BMP085 Temp/Pressure")
-            print(self.sensor_values.bmp085.temp)
+            print(self.sensor_values.bmp085.temperature)
             print(self.sensor_values.bmp085.pressure)
 
             print("BMP180 Temp/Pressure")
-            print(self.sensor_values.bmp180.temp)
+            print(self.sensor_values.bmp180.temperature)
             print(self.sensor_values.bmp180.pressure)
 
             print("BMP280 Temp/Pressure")
-            print(self.sensor_values.bmp280.temp)
+            print(self.sensor_values.bmp280.temperature)
             print(self.sensor_values.bmp280.pressure)
 
             print("DHT11 Temp/Humidty")
@@ -708,6 +715,49 @@ class PiWeM:
                 except:
                     self.sensor_values.fetch_error.append(sys.exc_info()[0])
 
+        # Populate upload_values (summary values) for display and other uses
+        temp_c = 0.0
+        temp_f = 32.0
+        humidity = 0.0
+        
+        # Determine humidity first (from DHTs)
+        if self.am2302_enabled and self.sensor_values.am2302.am2302_humidity:
+            humidity = self.sensor_values.am2302.am2302_humidity
+        elif self.dht22_enabled and self.sensor_values.dht22.humidity:
+            humidity = self.sensor_values.dht22.humidity
+        elif self.dht11_enabled and self.sensor_values.dht11.humidity:
+            humidity = self.sensor_values.dht11.humidity
+
+        # Determine temperature (prioritize high accuracy sensors)
+        if self.am2302_enabled and self.sensor_values.am2302.am2302_temp:
+            temp_c = self.sensor_values.am2302.am2302_temp[0]
+            temp_f = self.sensor_values.am2302.am2302_temp[1]
+        elif self.dht22_enabled and self.sensor_values.dht22.temp:
+            temp_c = self.sensor_values.dht22.temp[0]
+            temp_f = self.sensor_values.dht22.temp[1]
+        elif self.bmp280_enabled and self.sensor_values.bmp280.temperature:
+            temp_c = self.sensor_values.bmp280.temperature
+            temp_f = (temp_c * 9 / 5) + 32
+        elif self.bmp180_enabled and self.sensor_values.bmp180.temperature:
+            temp_c = self.sensor_values.bmp180.temperature
+            temp_f = (temp_c * 9 / 5) + 32
+        elif self.bmp085_enabled and self.sensor_values.bmp085.temperature:
+            temp_c = self.sensor_values.bmp085.temperature
+            temp_f = (temp_c * 9 / 5) + 32
+        elif self.dht11_enabled and self.sensor_values.dht11.temp:
+            temp_c = self.sensor_values.dht11.temp[0]
+            temp_f = self.sensor_values.dht11.temp[1]
+        elif self.thermistor_enabled and self.sensor_values.thermistor:
+            temp_c = self.sensor_values.thermistor[0]
+            temp_f = self.sensor_values.thermistor[1]
+        elif self.analog_temp_sensor_enabled and self.sensor_values.analog_temp_sensor:
+            temp_c = self.sensor_values.analog_temp_sensor[0]
+            temp_f = self.sensor_values.analog_temp_sensor[1]
+
+        self.sensor_values.upload_values.temp = temp_c
+        self.sensor_values.upload_values.ftemp = temp_f
+        self.sensor_values.upload_values.humidity = humidity
+
         if self.verbose:
             sys.stdout.write("\r\n")
             sys.stdout.flush()
@@ -773,18 +823,21 @@ class PiWeM:
             print('Temperature = {0:0.2f} F'.format(self.sensor_values.upload_values.ftemp))             # print(temperature in F
             print("\r\n")
             if self.bmp085_enabled:
+                print('085 Temperature = {0:0.2f} C / {1:0.2f} F'.format(self.sensor_values.bmp085.temperature, (self.sensor_values.bmp085.temperature * 1.8) + 32))
                 print('085 Pressure = {0:0.4f} Pa'.format(self.sensor_values.bmp085.pressure))   # print(pressure in pascal
                 print('085 Pressure = {0:0.4f} mmhg'.format(self.sensor_values.bmp085.pressure / float(133.322368) ))   # print(pressure in mm of Mercury
                 print('085 Pressure = {0:0.4f} atm'.format(self.sensor_values.bmp085.pressure / float(101325) ) )   # print(pressure in Atmospheres
                 print('085 Altitude = {0:0.4f} m'.format(self.sensor_values.bmp085.altitude))
                 print("\r\n")
             if self.bmp180_enabled:
+                print('180 Temperature = {0:0.2f} C / {1:0.2f} F'.format(self.sensor_values.bmp180.temperature, (self.sensor_values.bmp180.temperature * 1.8) + 32))
                 print('180 Pressure = {0:0.4f} Pa'.format(self.sensor_values.bmp180.pressure) )  # print(pressure in pascal
                 print('180 Pressure = {0:0.4f} mmhg'.format(self.sensor_values.bmp180.pressure / float(133.322368) ) )  # print(pressure in mm of Mercury
                 print('180 Pressure = {0:0.4f} atm'.format(self.sensor_values.bmp180.pressure / float(101325) ) )   # print(pressure in Atmospheres
                 print('180 Altitude = {0:0.4f} m'.format(self.sensor_values.bmp180.altitude))
                 print("\r\n")
             if self.bmp280_enabled:
+                print('280 Temperature = {0:0.2f} C / {1:0.2f} F'.format(self.sensor_values.bmp280.temperature, (self.sensor_values.bmp280.temperature * 1.8) + 32))
                 print('280 Pressure = {0:0.4f} Pa'.format(self.sensor_values.bmp280.pressure))   # print(pressure in pascal
                 print('280 Pressure = {0:0.4f} mmhg'.format(self.sensor_values.bmp280.pressure / float(133.322368) ))   # print(pressure in mm of Mercury
                 print('280 Pressure = {0:0.4f} atm'.format(self.sensor_values.bmp280.pressure / float(101325) ) )   # print(pressure in Atmospheres
@@ -1334,3 +1387,123 @@ class PiWeM:
         except urllib.error.URLError as e:
             print(e.reason, e.args)
             return -1
+
+    def get_db_connection(self):
+        """Ensure database connection is open and return it."""
+        if not self.db:
+            import MySQLdb
+            self.db = MySQLdb.connect(
+                host=self.__settings.get('sql_host', 'localhost'),
+                user=self.__settings.get('sql_user', 'root'),
+                passwd=self.__settings.get('sql_password', 'toor')
+            )
+            self.conn = self.db.cursor()
+        return self.db
+
+    def get_registered_sensors(self):
+        """Query Station_sensors database table to find active sensors for this station."""
+        self.get_db_connection()
+        sensors_list = ["dht11", "dht22", "bmp085", "bmp180", "bmp280", "thermistor", "analog_temp_sensor", "photoresistor", "am2302"]
+        active = []
+        try:
+            self.conn.execute(
+                "SELECT dht11, dht22, bmp085, bmp180, bmp280, thermistor, analog_temp_sensor, photoresistor, am2302 "
+                "FROM `weather_data`.`Station_sensors` WHERE station_hash = %s LIMIT 1",
+                (self.station_hash,)
+            )
+            row = self.conn.fetchone()
+            if row:
+                for idx, col_name in enumerate(sensors_list):
+                    if int(row[idx] or 0) == 1:
+                        if col_name in ["dht11", "dht22", "am2302"]:
+                            active.append((col_name, 'temp', '°C', f"{col_name.upper()} Temperature"))
+                            active.append((col_name, 'humidity', '%', f"{col_name.upper()} Humidity"))
+                        elif col_name in ["bmp085", "bmp180", "bmp280"]:
+                            active.append((col_name, 'temp', '°C', f"{col_name.upper()} Temperature"))
+                            active.append((col_name, 'pressure', 'Pa', f"{col_name.upper()} Pressure"))
+                        elif col_name == "photoresistor":
+                            active.append((col_name, 'photolevel', 'Units', "Photoresistor"))
+                        elif col_name in ["thermistor", "analog_temp_sensor"]:
+                            active.append((col_name, 'temp', '°C', f"{col_name.upper()} Temperature"))
+        except Exception as e:
+            if self.debug:
+                print(f"Error querying Station_sensors: {e}")
+            
+        if not active:
+            # Fallback if Station_sensors doesn't exist/empty: check which individual sensor tables have logged data for this station
+            individual_tables = {
+                "dht11": ("dht11", [("temp", "°C", "DHT11 Temperature"), ("humidity", "%", "DHT11 Humidity")]),
+                "dht22": ("dht22", [("temp", "°C", "DHT22 Temperature"), ("humidity", "%", "DHT22 Humidity")]),
+                "am2302": ("am2302", [("temp", "°C", "AM2302 Temperature"), ("humidity", "%", "AM2302 Humidity")]),
+                "bmp085": ("bmp085", [("temp", "°C", "BMP085 Temperature"), ("pressure", "Pa", "BMP085 Pressure")]),
+                "bmp180": ("bmp180", [("temp", "°C", "BMP180 Temperature"), ("pressure", "Pa", "BMP180 Pressure")]),
+                "bmp280": ("bmp280", [("temp", "°C", "BMP280 Temperature"), ("pressure", "Pa", "BMP280 Pressure")]),
+                "photoresistor": ("photoresistor", [("photolevel", "Units", "Photoresistor Level")]),
+                "thermistor": ("thermistor", [("temp", "°C", "Thermistor Temperature")]),
+                "analog_temp_sensor": ("analog_temp_sensor", [("temp", "°C", "Analog Temp Temperature")]),
+                "wind_speed": ("wind", [("wind_speed", "m/s", "Wind Speed")])
+            }
+            for table_name, (sensor_name, fields) in individual_tables.items():
+                try:
+                    self.conn.execute(
+                        f"SELECT 1 FROM `weather_data`.`{table_name}` WHERE `station_hash` = %s LIMIT 1",
+                        (self.station_hash,)
+                    )
+                    if self.conn.fetchone():
+                        for f_name, f_unit, f_title in fields:
+                            active.append((sensor_name, f_name, f_unit, f_title))
+                except Exception as fallback_e:
+                    if self.debug:
+                        print(f"Fallback check for table {table_name} failed: {fallback_e}")
+
+        if not active:
+            active.append(('dht22', 'temp', '°C', 'Temperature'))
+            active.append(('dht22', 'humidity', '%', 'Humidity'))
+        return active
+
+    def get_historical_sensor_data(self, sensor, field, limit=None, hours=None):
+        """Fetch historical sensor data from MySQL database."""
+        self.get_db_connection()
+        sql_field = 'c_temp'
+        if field == 'humidity':
+            sql_field = 'humidity'
+        elif field == 'pressure':
+            sql_field = 'pressure'
+        elif field == 'photolevel':
+            sql_field = 'photolevel'
+        elif field == 'wind_speed':
+            sql_field = 'meters_per_second'
+
+        # Build query filters
+        where_clause = f"WHERE `station_hash` = %s AND `{sql_field}` != 0"
+        params = [self.station_hash]
+
+        if hours is not None and hours > 0:
+            import datetime
+            cutoff = (datetime.datetime.utcnow() - datetime.timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+            where_clause += " AND `timestamp` >= %s"
+            params.append(cutoff)
+
+        limit_clause = ""
+        if limit is not None:
+            limit_clause = f" LIMIT {int(limit)}"
+
+        queried_data = []
+        try:
+            # Try consolidated table first
+            query = f"SELECT `{sql_field}`, `timestamp` FROM `weather_data`.`weather_data` {where_clause} ORDER BY `timestamp` DESC {limit_clause}"
+            self.conn.execute(query, tuple(params))
+            queried_data = self.conn.fetchall()
+        except Exception as e:
+            if self.debug:
+                print(f"Consolidated query failed: {e}. Falling back to separate table layout.")
+            try:
+                # Fall back to separate table layout
+                query = f"SELECT `{sql_field}`, `timestamp` FROM `weather_data`.`{sensor}` {where_clause} ORDER BY `timestamp` DESC {limit_clause}"
+                self.conn.execute(query, tuple(params))
+                queried_data = self.conn.fetchall()
+            except Exception as e2:
+                if self.debug:
+                    print(f"Separate table query for {sensor} failed: {e2}")
+        
+        return list(reversed(queried_data))

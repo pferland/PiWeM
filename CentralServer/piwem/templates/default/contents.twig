@@ -1,0 +1,20 @@
+<ul>
+	<li><a href="/piwem/">Home</a></li>
+</ul>
+<div style="margin-top: 20px; font-size: 0.9em; padding: 5px;">
+	<form method="get" action="">
+		{% if station_data is defined and station_data.station_hash is defined %}
+			<input type="hidden" name="station_hash" value="{{ station_data.station_hash }}">
+		{% endif %}
+		{% if limit is defined %}
+			<input type="hidden" name="limit" value="{{ limit }}">
+		{% endif %}
+		
+		<label for="theme_select" style="font-weight: bold; display: block; margin-bottom: 5px;">Theme:</label>
+		<select id="theme_select" name="theme" onchange="this.form.submit()" style="width: 100%;">
+			{% for t in available_themes %}
+				<option value="{{ t }}" {% if t == current_theme %}selected{% endif %}>{{ t|capitalize }}</option>
+			{% endfor %}
+		</select>
+	</form>
+</div>

@@ -29,14 +29,13 @@ def generate_simulation_configs():
     config.set("settings", "bufferlocally", "0")
     config.set("settings", "upload_to_central_server", "0")
     config.set("settings", "upload_to_weather_underground", "0")
+    config.set("settings", "station_hash", "SIMULATION_STATION_HASH_12345")
+    config.set("settings", "station_key", "SIMULATION_STATION_KEY_12345")
 
     with open("settings.ini", "w") as f:
         config.write(f)
 
-    with open("station_hash.txt", "w") as f:
-        f.write("SIMULATION_STATION_HASH_12345")
-
-    print("[Sim] settings.ini and station_hash.txt generated successfully.")
+    print("[Sim] settings.ini generated successfully.")
 
 def run_simulation():
     try:
@@ -58,13 +57,10 @@ def run_simulation():
         
         print("\n[Sim] Simulation iteration completed successfully!")
     finally:
-        # Cleanup settings.ini and station_hash.txt
+        # Cleanup settings.ini
         if os.path.exists("settings.ini"):
             os.remove("settings.ini")
             print("[Sim] settings.ini cleaned up.")
-        if os.path.exists("station_hash.txt"):
-            os.remove("station_hash.txt")
-            print("[Sim] station_hash.txt cleaned up.")
 
 if __name__ == "__main__":
     print("=== Starting PiWeM Simulation ===")

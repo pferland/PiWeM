@@ -1,0 +1,83 @@
+{% include 'header.twig' %}
+	<table>
+		<tr>
+		{% for station in stations %}
+			<td style="vertical-align: top">
+			<table style="width: 100%;vertical-align: top">
+				<tr class="station_header">
+					<th style="width: 100%" align="center" colspan="2"> <a href="station.php?station_hash={{ station.station_hash }}">{{ station.station_name }}</a></th>
+				</tr>
+				<tr class="station_header">
+					<th style="width: 100%" align="center" colspan="2"> {{ station.last_update }}</th>
+				</tr>
+				{% for key, sensor in station.sensors %}
+					{% if key == 'photoresistor' %}
+						<tr class="sensor_header">
+							<th colspan="2">Photoresistor</th>
+						</tr>
+						<tr class="sensor_values">
+							<td style="background-color: #7d87ff">Photolevel</td>
+							<td style="width: 70px;text-align: center">{{ sensor.photolevel }}</td>
+						</tr>
+					{% endif %}
+
+					{% if key == 'dht11' or key == 'dht22' or key == 'am2302' or key == 'am3202' %}
+						<tr class="sensor_header">
+							<th colspan="2">{{ key }}</th>
+						</tr>
+						<tr class="sensor_values">
+							<td style="background-color: #7d87ff">Celsius</td>
+							<td style="width: 70px;text-align: center">{{ sensor.c_temp }}</td>
+						</tr>
+						<tr class="sensor_values">
+							<td style="background-color: #7d87ff">Fahrenheit</td>
+							<td style="width: 70px;text-align: center">{{ sensor.f_temp }}</td>
+						</tr>
+						<tr class="sensor_values">
+							<td style="background-color: #7d87ff">Humidity</td>
+							<td style="width: 70px;text-align: center">{{ sensor.humidity }}</td>
+						</tr>
+					{% endif %}
+
+					{% if key == 'bmp085' or key == 'bmp180' or key == 'bmp280' %}
+						<tr class="sensor_header">
+							<th colspan="2">{{ key }}</th>
+						</tr>
+						<tr class="sensor_values">
+							<td style="background-color: #7d87ff">Celsius</td>
+							<td style="width: 70px;text-align: center">{{ sensor.c_temp }}</td>
+						</tr>
+						<tr class="sensor_values">
+							<td style="background-color: #7d87ff">Fahrenheit</td>
+							<td style="width: 70px;text-align: center">{{ sensor.f_temp }}</td>
+						</tr>
+						<tr class="sensor_values">
+							<td style="background-color: #7d87ff">Pressure</td>
+							<td style="width: 70px;text-align: center">{{ sensor.pressure }}</td>
+						</tr>
+						<tr class="sensor_values">
+							<td style="background-color: #7d87ff">Altitude</td>
+							<td style="width: 70px;text-align:center;">{{ sensor.altitude }}</td>
+						</tr>
+					{% endif %}
+
+					{% if key == 'thermistor' or key == 'db18s20' or key == 'analog_temp_sensor' %}
+						<tr class="sensor_header">
+							<th colspan="2">{{ key }}</th>
+						</tr>
+						<tr class="sensor_values">
+							<td style="background-color: #7d87ff">Celsius</td>
+							<td style="width: 70px;text-align: center">{{ sensor.c_temp }}</td>
+						</tr>
+						<tr class="sensor_values">
+							<td style="background-color: #7d87ff">Fahrenheit</td>
+							<td style="width: 70px;text-align: center">{{ sensor.f_temp }}</td>
+						</tr>
+					{% endif %}
+				{% endfor %}
+			</table>
+			</td>
+		{% endfor %}
+		</tr>
+	</table>
+{% include 'footer.twig' %}

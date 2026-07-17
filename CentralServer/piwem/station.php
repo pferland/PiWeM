@@ -22,7 +22,10 @@ if not, write to the
 require "lib/config.php"; #www config
 require "lib/PiWeMFront.inc.php"; #PiWeM Front end class
 
-$limit = isset($_REQUEST['limit']) ? (INT)$_REQUEST['limit'] : 500;
+$limit = isset($_REQUEST['limit']) ? $_REQUEST['limit'] : '24 HOUR';
+if ($limit !== 'all' && !preg_match('/^\d+\s+(MINUTE|HOUR|DAY|WEEK|MONTH)$/i', $limit) && !is_numeric($limit)) {
+    $limit = '24 HOUR';
+}
 $camera_enabled = 0;
 $user_tz = -18000;
 #init PiWeM Front end class
@@ -69,9 +72,11 @@ foreach($sensors as $sensor=>$value)
 
 if(!$PiWem_Front->debug)
 {
-    $PiWem_Front->smarty->assign('camera_enabled', $camera_enabled);
-    $PiWem_Front->smarty->assign("stations", $stations);
-    $PiWem_Front->smarty->assign("station_data", $Station_Data_Array);
-    $PiWem_Front->smarty->display("station.tpl");
+    echo $PiWem_Front->twig->render("station.twig", [
+        'camera_enabled' => $camera_enabled,
+        'stations' => $stations,
+        'station_data' => $Station_Data_Array,
+        'limit' => $limit
+    ]);
 }
 

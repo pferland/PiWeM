@@ -62,7 +62,8 @@ if($PiWem_Front->debug)
 
 if(!$PiWem_Front->debug)
 {
-    $PiWem_Front->smarty->assign("stations", $Stations_Data_Array);
-    $PiWem_Front->smarty->display("index.tpl");
+    echo $PiWem_Front->twig->render("index.twig", [
+        "stations" => $Stations_Data_Array
+    ]);
 }
 

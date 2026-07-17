@@ -33,6 +33,10 @@ switch(strtolower(@$_REQUEST['mode']))
         $PiWeMAPI->read_data();
         break;
 
+    case "liststations":
+        $PiWeMAPI->list_stations();
+        break;
+
     default:
 
         break;

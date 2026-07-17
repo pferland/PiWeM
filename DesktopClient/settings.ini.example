@@ -1,0 +1,6 @@
+[General]
+geometry=@ByteArray()
+server_url=http://127.0.0.1/piwem
+station_hash=
+station_key=
+windowState=@ByteArray()

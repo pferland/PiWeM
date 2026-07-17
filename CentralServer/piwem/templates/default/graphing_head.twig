@@ -1,0 +1,251 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>Raspberry Pi Weather Monitor</title>
+	<link rel="stylesheet" type="text/css" href="style.css">
+	<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+	<script type="text/javascript">
+		google.load("visualization", "1", {packages:["corechart"]});
+
+		{% for sensor in station_data.sensors %}  <!-- loop through each sensor -->
+		{% if sensor.name == 'dht11' or sensor.name == 'dht22' or sensor.name == 'am2302' %} <!-- detect the sensor -->
+		<!-- We need to create a graph function for the two different data values, as tempurature and Humidity wil not always be on the same scale. -->
+		function drawChart_{{ sensor.name }}_humidity() {
+
+			var options_{{ sensor.name }}_humidity = {
+				selectionMode: 'multiple',
+				title: "{{ sensor.name }}",
+				crosshair: { trigger: 'both' },
+				chartArea: { width: '100%', height: '70%'},
+				legend: { position: 'none'},
+				titlePosition: 'none',
+				hAxis: { textPosition: 'bottom'},
+				vAxis: { textPosition: 'in'},
+				explorer:
+				{
+					maxZoomIn: .005,
+					actions: ['dragToZoom', 'rightClickToReset'],
+					axis: 'vertical',
+					keepInBounds: false
+				}
+			};
+
+			var data_{{ sensor.name }}_humidity = new google.visualization.DataTable();
+			data_{{ sensor.name }}_humidity.addColumn('string', 'Timestamp');
+			data_{{ sensor.name }}_humidity.addColumn('number', 'Humidity');
+			data_{{ sensor.name }}_humidity.addRows([
+				{% for prow in sensor.data %}
+				['{{ prow.timestamp }}',  {{ prow.humidity|default(0) }} ],
+				{% endfor %}
+			]);
+
+			var chart_{{ sensor.name }}_humidity = new google.visualization.LineChart(document.getElementById('chart_div_{{ sensor.name }}_humidity'));
+			chart_{{ sensor.name }}_humidity.draw(data_{{ sensor.name }}_humidity, options_{{ sensor.name }}_humidity);
+		}
+		google.setOnLoadCallback(drawChart_{{ sensor.name }}_humidity);
+
+
+		<!-- Now lets do the same for the Temperature data and Timestamp-->
+		function drawChart_{{ sensor.name }}_temp() {
+
+			var options_{{ sensor.name }}_temp = {
+				selectionMode: 'multiple',
+				title: "{{ sensor.name }}",
+				crosshair: { trigger: 'both' },
+				chartArea: { width: '100%', height: '70%'},
+				legend: { position: 'none'},
+				titlePosition: 'none',
+				hAxis: { textPosition: 'bottom'},
+				vAxis: { textPosition: 'in'},
+				explorer:
+				{
+					maxZoomIn: .005,
+					actions: ['dragToZoom', 'rightClickToReset'],
+					axis: 'vertical',
+					keepInBounds: false
+				}
+			};
+
+			var data_{{ sensor.name }}_temp = new google.visualization.DataTable();
+			data_{{ sensor.name }}_temp.addColumn('string', 'Timestamp');
+			data_{{ sensor.name }}_temp.addColumn('number', 'Celsius');
+			data_{{ sensor.name }}_temp.addColumn('number', 'Fahrenheit');
+			data_{{ sensor.name }}_temp.addRows([
+				{% for prow in sensor.data %}
+				['{{ prow.timestamp }}',  {{ prow.c_temp|default(0) }}, {{ prow.f_temp|default(0) }} ],
+				{% endfor %}
+			]);
+
+			var chart_{{ sensor.name }}_temp = new google.visualization.LineChart(document.getElementById('chart_div_{{ sensor.name }}_temp'));
+			chart_{{ sensor.name }}_temp.draw(data_{{ sensor.name }}_temp, options_{{ sensor.name }}_temp);
+		}
+		google.setOnLoadCallback(drawChart_{{ sensor.name }}_temp);
+
+
+		{% elseif sensor.name == 'bmp085' or sensor.name == 'bmp180' or sensor.name == 'bmp280' %}
+		<!-- We need to create graph functions and graphs for pressure and temp because the data values are not even close to the same scales and look like flat lines, and that is boring. -->
+
+		<!-- -->
+		<!-- -->
+		<!-- Now lets go through each row and only pick out the Pressure and Timestamp -->
+		function drawChart_{{ sensor.name }}_pressure() {
+
+			var options_{{ sensor.name }}_pressure = {
+				selectionMode: 'multiple',
+				title: "{{ sensor.name }}",
+				crosshair: { trigger: 'both' },
+				chartArea: { width: '100%', height: '70%'},
+				legend: { position: 'none'},
+				titlePosition: 'none',
+				hAxis: { textPosition: 'bottom'},
+				vAxis: { textPosition: 'in'},
+				explorer:
+				{
+					maxZoomIn: .005,
+					actions: ['dragToZoom', 'rightClickToReset'],
+					axis: 'vertical',
+					keepInBounds: false
+				}
+			};
+
+			var data_{{ sensor.name }}_pressure = new google.visualization.DataTable();
+			data_{{ sensor.name }}_pressure.addColumn('string', 'Timestamp');
+			data_{{ sensor.name }}_pressure.addColumn('number', 'Pressure');
+			data_{{ sensor.name }}_pressure.addRows([
+				{% for prow in sensor.data %}
+				['{{ prow.timestamp }}',  {{ prow.pressure|default(0) }} ],
+				{% endfor %}
+			]);
+
+			var chart_{{ sensor.name }}_pressure = new google.visualization.LineChart(document.getElementById('chart_div_{{ sensor.name }}_pressure'));
+			chart_{{ sensor.name }}_pressure.draw(data_{{ sensor.name }}_pressure, options_{{ sensor.name }}_pressure);
+		}
+		google.setOnLoadCallback(drawChart_{{ sensor.name }}_pressure);
+
+
+		<!-- -->
+		<!-- -->
+		<!-- Now lets go through each row and only pick out the Temperature data and Timestamp-->
+		function drawChart_{{ sensor.name }}_temp() {
+
+			var options_{{ sensor.name }}_temp = {
+				selectionMode: 'multiple',
+				title: "{{ sensor.name }}",
+				crosshair: { trigger: 'both' },
+				chartArea: { width: '100%', height: '70%'},
+				legend: { position: 'none'},
+				titlePosition: 'none',
+				hAxis: { textPosition: 'bottom'},
+				vAxis: { textPosition: 'in'},
+				explorer:
+				{
+					maxZoomIn: .005,
+					actions: ['dragToZoom', 'rightClickToReset'],
+					axis: 'vertical',
+					keepInBounds: false
+				}
+			};
+
+			var data_{{ sensor.name }}_temp = new google.visualization.DataTable();
+			data_{{ sensor.name }}_temp.addColumn('string', 'Timestamp');
+			data_{{ sensor.name }}_temp.addColumn('number', 'Celsius');
+			data_{{ sensor.name }}_temp.addColumn('number', 'Fahrenheit');
+			data_{{ sensor.name }}_temp.addRows([
+				{% for prow in sensor.data %}
+				['{{ prow.timestamp }}',  {{ prow.c_temp|default(0) }}, {{ prow.f_temp|default(0) }} ],
+				{% endfor %}
+			]);
+
+			var chart_{{ sensor.name }}_temp = new google.visualization.LineChart(document.getElementById('chart_div_{{ sensor.name }}_temp'));
+			chart_{{ sensor.name }}_temp.draw(data_{{ sensor.name }}_temp, options_{{ sensor.name }}_temp);
+		}
+		google.setOnLoadCallback(drawChart_{{ sensor.name }}_temp);
+
+
+		{% elseif sensor.name == 'analog_temp_sensor' or sensor.name == 'thermistor' or sensor.name == 'db18s20' %}
+		function drawChart_{{ sensor.name }}() {
+
+			var options_{{ sensor.name }} = {
+				selectionMode: 'multiple',
+				title: "{{ sensor.name }}",
+				crosshair: { trigger: 'both' },
+				chartArea: { width: '100%', height: '70%'},
+				legend: { position: 'none'},
+				titlePosition: 'none',
+				hAxis: { textPosition: 'bottom'},
+				vAxis: { textPosition: 'in'},
+				explorer:
+				{
+					maxZoomIn: .005,
+					actions: ['dragToZoom', 'rightClickToReset'],
+					axis: 'vertical',
+					keepInBounds: false
+				}
+			};
+
+			var data_{{ sensor.name }} = new google.visualization.DataTable();
+			data_{{ sensor.name }}.addColumn('string', 'Timestamp');
+			data_{{ sensor.name }}.addColumn('number', 'Celsius');
+			data_{{ sensor.name }}.addColumn('number', 'Fahrenheit');
+			data_{{ sensor.name }}.addRows([
+				{% for prow in sensor.data %}
+				['{{ prow.timestamp }}',  {{ prow.c_temp|default(0) }}, {{ prow.f_temp|default(0) }} ],
+				{% endfor %}
+			]);
+
+			var chart_{{ sensor.name }} = new google.visualization.LineChart(document.getElementById('chart_div_{{ sensor.name }}'));
+			chart_{{ sensor.name }}.draw(data_{{ sensor.name }}, options_{{ sensor.name }});
+		}
+		google.setOnLoadCallback(drawChart_{{ sensor.name }});
+
+
+		{% elseif sensor.name == 'photoresistor' %}
+		function drawChart_{{ sensor.name }}() {
+
+			var options_{{ sensor.name }} = {
+				selectionMode: 'multiple',
+				title: "{{ sensor.name }}",
+				crosshair: { trigger: 'both' },
+				chartArea: { width: '100%', height: '70%'},
+				legend: { position: 'none'},
+				titlePosition: 'none',
+				hAxis: { textPosition: 'bottom'},
+				vAxis: { textPosition: 'in'},
+				explorer:
+				{
+					maxZoomIn: .005,
+					actions: ['dragToZoom', 'rightClickToReset'],
+					axis: 'vertical',
+					keepInBounds: false
+				}
+			};
+
+			var data_{{ sensor.name }} = new google.visualization.DataTable();
+			data_{{ sensor.name }}.addColumn('string', 'Timestamp');
+			data_{{ sensor.name }}.addColumn('number', 'PhotoLevel');
+			data_{{ sensor.name }}.addRows([
+				{% for prow in sensor.data %}
+				['{{ prow.timestamp }}',  {{ prow.photolevel|default(0) }} ],
+				{% endfor %}
+			]);
+
+			var chart_{{ sensor.name }} = new google.visualization.LineChart(document.getElementById('chart_div_{{ sensor.name }}'));
+			chart_{{ sensor.name }}.draw(data_{{ sensor.name }}, options_{{ sensor.name }});
+		}
+		google.setOnLoadCallback(drawChart_{{ sensor.name }});
+		{% endif %}
+		{% endfor %}
+	</script>
+</head>
+<body>
+<table style="width: 100%">
+	<tr>
+		<td colspan="2" align="left" class="sub_header">
+			{% include 'sub_header.twig' %}
+		</td>
+	</tr>
+	<tr>
+		<td width="10%" valign="top" class="contents"><!-- Contents Index -->
+			{% include 'contents.twig' %}
+		</td>
+		<td align="center" class="body"><!-- Body of page -->
